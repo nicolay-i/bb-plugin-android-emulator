@@ -1,0 +1,14 @@
+dist/
+node_modules/
+
+.tmp/
+__pycache__/
+*.log
+
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+bridge/tmp/
+bridge/scrcpy-linux-*/

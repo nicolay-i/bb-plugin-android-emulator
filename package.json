@@ -1,0 +1,44 @@
+{
+  "name": "bb-plugin-android-emulator",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "bb": ">=0.46",
+    "bbPluginSdk": ">=0.6.37"
+  },
+  "bb": {
+    "name": "Android Emulator",
+    "description": "Интерактивный Android-эмулятор: выбор AVD, управление и отправка текста.",
+    "branding": {
+      "icon": "Smartphone"
+    },
+    "server": "./server.ts",
+    "app": "./app.tsx"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@get-bb/plugin-sdk": "0.6.37",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "@types/better-sqlite3": "^7.6.12",
+    "hono": "^4.11.9"
+  },
+  "scripts": {
+    "build": "bb plugin build",
+    "check": "tsc --noEmit",
+    "test": "python3 -m unittest discover -s bridge -p \"test_*.py\"",
+    "test:i18n": "node bridge/i18n.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicolay-i/bb-plugin-android-emulator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nicolay-i/bb-plugin-android-emulator/issues"
+  },
+  "homepage": "https://github.com/nicolay-i/bb-plugin-android-emulator#readme"
+}

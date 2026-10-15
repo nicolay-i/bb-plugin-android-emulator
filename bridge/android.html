@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Android Emulator</title>
+<style>
+:root{color-scheme:light dark;--surface:Canvas;--fg:CanvasText;--muted:GrayText;--line:color-mix(in srgb,CanvasText 18%,Canvas);--blue:Highlight;--on-blue:HighlightText;--stage:color-mix(in srgb,Canvas 95%,CanvasText);--popover:Canvas;--popover-fg:CanvasText;--field:Canvas;--hover:color-mix(in srgb,CanvasText 7%,Canvas);--active:color-mix(in srgb,Highlight 15%,Canvas);--active-fg:Highlight}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{display:flex;flex-direction:column;background:var(--surface);color:var(--fg);font:14px 'IBM Plex Sans',system-ui,sans-serif;overflow:hidden}button,select,textarea{font:inherit;color:inherit}button{cursor:pointer;border:0;background:transparent;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px}button:hover{background:var(--hover)}button:disabled{opacity:.4;cursor:default}button:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--blue);outline-offset:2px}button[aria-expanded=true]{background:var(--active);color:var(--active-fg)}svg{flex:none;pointer-events:none}header{display:flex;align-items:center;gap:2px;padding:6px 8px;border-bottom:1px solid var(--line);min-height:49px;flex:none;position:relative;z-index:2}.icon-button{width:44px;height:36px;padding:0;color:var(--muted);flex:none}.spacer{flex:1}#device-button{gap:8px;padding:0 10px;min-width:0;text-align:left}#device-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#device-port{font:11px 'JetBrains Mono',monospace;color:var(--muted)}.dot{width:8px;height:8px;border-radius:50%;background:#a0a3a8;flex:none}.dot.online{background:#2da44e}.popover{color:var(--popover-fg);position:absolute;top:52px;right:12px;background:var(--popover);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px #14141e29;padding:12px;z-index:3;width:min(366px,calc(100vw - 24px))}[hidden]{display:none!important}#device-popover{left:12px;right:auto}.field-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--field);min-height:40px}#launch{margin-top:14px}summary{cursor:pointer;font-size:13px;color:var(--blue);padding:4px 0}#launch>div{display:flex;gap:8px;padding-top:8px}#launch select{min-width:0;flex:1}.primary{background:var(--blue);color:var(--on-blue);padding:0 14px;font-weight:500;flex:none}.primary:hover{background:color-mix(in srgb,var(--blue) 85%,var(--fg))}.menu{width:228px;padding:6px}.menu button{display:flex;justify-content:flex-start;width:100%;padding:8px 10px}.popover form{display:flex;flex-direction:column;gap:10px}.popover label{font-size:12px;font-weight:600;color:var(--muted)}textarea::placeholder{color:var(--muted);opacity:1}textarea{resize:vertical;width:100%;min-height:88px;max-height:240px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--fg);line-height:1.5}.form-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.hint{font-size:12px;color:var(--muted)}.cancel{padding:0 12px;color:var(--muted)}
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--stage);container-type:size}#phone{height:100%;width:auto;aspect-ratio:9/19.5;max-width:100%;border:5px solid #1f2023;border-radius:30px;overflow:hidden;background:#dadbe0;box-shadow:0 12px 32px #14141e2e;position:relative}#screen{width:100%;height:100%;overflow:hidden}#screen>div{background:transparent!important}@supports(height:1cqh){#phone{width:min(calc(100cqh * .461538),100cqw);height:min(100cqh,calc(100cqw / .461538))}}
+#status{margin:0;padding:7px 12px;color:var(--muted);font-size:12px;line-height:1.4;background:var(--stage);flex:none}#status:empty{display:none}nav{display:flex;justify-content:center;padding:8px 12px 12px;background:var(--stage);flex:none}.nav-buttons{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px #14141e0f}.nav-buttons button{width:72px;height:40px;color:var(--fg)}#empty{text-align:center;max-width:340px;display:flex;align-items:center;flex-direction:column;gap:16px;padding:20px 8px}.empty-icon{width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}h1{font-size:18px;font-weight:600;margin:0 0 6px}#empty p{margin:0;color:var(--muted);line-height:1.5}#empty-start{min-height:44px;padding:0 18px;border-radius:10px}#other-avd{color:var(--blue);font-size:13px;padding:0 6px;min-height:24px}@media(max-width:380px){header{padding-inline:4px}.icon-button{width:34px}#device-button{padding-inline:6px;gap:6px}#device-port{display:none}.hint{font-size:11px}.form-actions{gap:4px}#stage{padding:12px}}
+#empty-refresh{display:none}body[data-empty="true"] nav,body[data-empty="true"] #screenshot,body[data-empty="true"] #rotate,body[data-empty="true"] #text-toggle,body[data-empty="true"] #more-toggle{display:none}body[data-empty="true"] #empty-refresh{display:inline-flex}
+</style><script>
+(()=>{
+ const keys=new Set(['surface','fg','muted','line','blue','on-blue','stage','popover','popover-fg','field','hover','active','active-fg']);
+ window.addEventListener('message',event=>{
+   const data=event.data;
+   if(window.parent!==window&&event.source===window.parent&&data?.type==='bb-android-language'&&typeof data.language==='string'&&data.language.length<40){
+     window.bbAndroidLanguage=data.language;
+     window.dispatchEvent(new CustomEvent('bb-android-language',{detail:data.language}));
+     return;
+   }
+   if(window.parent===window||event.source!==window.parent||data?.type!=='bb-android-theme'||!['light','dark'].includes(data.mode)||!data.colors||typeof data.colors!=='object')return;
+   const root=document.documentElement;
+   root.style.colorScheme=data.mode;
+   for(const key of keys){
+     const value=data.colors[key];
+     if(typeof value==='string'&&value.length<256&&!/var\(|url\(|[;{}]/i.test(value)&&CSS.supports('color',value))root.style.setProperty('--'+key,value);
+     else root.style.removeProperty('--'+key);
+   }
+ });
+ if(window.parent!==window)window.parent.postMessage({type:'bb-android-ready'},'*');
+})();
+</script></head><body data-empty="true">
+<header>
+<button id="device-button" aria-label="Choose device" data-i18n-label="chooseDevice" aria-expanded="false" aria-controls="device-popover"><span class="dot"></span><span id="device-name" data-i18n="connecting">Connecting…</span><span id="device-port"></span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button>
+<span class="spacer"></span>
+<button class="icon-button" id="screenshot" aria-label="Screenshot" data-i18n-label="screenshot" title="Screenshot" data-i18n-title="screenshot"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></button>
+<button class="icon-button" id="rotate" aria-label="Rotate screen" data-i18n-label="rotate" title="Rotate screen" data-i18n-title="rotate"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="16" rx="2"></rect><path d="M20 14a8 8 0 0 1-6 7"></path><path d="M14 18v3h3"></path></svg></button>
+<button class="icon-button" id="text-toggle" aria-label="Enter text" data-i18n-label="input" title="Enter text" data-i18n-title="input" aria-expanded="false" aria-controls="input"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"></rect><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"></path></svg></button>
+<button class="icon-button" id="more-toggle" aria-label="More" data-i18n-label="more" title="More" data-i18n-title="more" aria-expanded="false" aria-controls="more"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg></button>
+<button class="icon-button" id="empty-refresh" aria-label="Refresh list" data-i18n-label="refresh" title="Refresh list" data-i18n-title="refresh"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v5h-5"></path></svg></button>
+<section id="device-popover" class="popover" aria-label="Choose device" data-i18n-label="chooseDevice" hidden><label class="field-label" for="devices" data-i18n="running">Running emulators</label><select id="devices"><option value="" data-i18n="connecting">Connecting…</option></select><details id="launch"><summary data-i18n="launch">Start emulator</summary><div><select id="avds" aria-label="Available AVD" data-i18n-label="avd"></select><button class="primary" id="start" data-i18n="start">Start</button></div></details></section>
+<section id="input" class="popover" aria-label="Enter text" data-i18n-label="input" hidden><form><label for="text" data-i18n="textLabel">Text to device</label><textarea id="text" rows="3" placeholder="Paste or type text…" data-i18n-placeholder="placeholder"></textarea><div class="form-actions"><span class="hint" data-i18n="shortcut">Ctrl+Enter to send</span><span class="spacer"></span><button class="cancel" id="cancel-text" type="button" data-i18n="cancel">Cancel</button><button class="primary" id="send" type="submit" data-i18n="send">Send</button></div></form></section>
+<div id="more" class="popover menu" hidden><button id="refresh" data-i18n="refresh">Refresh list</button><button id="reconnect" data-i18n="reconnect">Reconnect screen</button><button id="show-launch" data-i18n="other">Another AVD or launch options</button></div>
+</header>
+<main id="stage"><div id="phone" hidden><div id="screen"></div></div><section id="empty"><div class="empty-icon"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg></div><div><h1 data-i18n="emptyTitle">Emulator is not running</h1><p data-i18n="emptyBody">The panel will connect automatically when a device finishes booting.</p></div><button class="primary" id="empty-start" data-i18n="launch">Start emulator</button><button id="other-avd" data-i18n="other">Another AVD or launch options</button></section></main>
+<p id="status" role="status" aria-live="polite"></p>
+<nav aria-label="Android navigation" data-i18n-label="nav"><div class="nav-buttons"><button data-key="back" aria-label="Back" data-i18n-label="back" title="Back" data-i18n-title="back"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M17 5L7 12l10 7z"></path></svg></button><button data-key="home" aria-label="Home" data-i18n-label="home" title="Home" data-i18n-title="home"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"></circle></svg></button><button data-key="recent" aria-label="Recent apps" data-i18n-label="recent" title="Recent apps" data-i18n-title="recent"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg></button></div></nav>
+<script type="module">
+
+import RFB from './core/rfb.js';
+import {resolveLanguage,translate} from './i18n.js';
+let locale=resolveLanguage(window.bbAndroidLanguage||new URL(location.href).searchParams.get('lang')||'auto',navigator.languages);
+const t=(key,values)=>translate(locale,key,values);
+let lastState=null,lastStatus=null;
+const $=s=>document.querySelector(s), status=$('#status');
+let selected=null, rfb, timer, busy=false, pendingSerial=null, connectedSerial=null;
+const report=e=>{lastStatus=e?.translationKey||'commandFailed';status.textContent=t(lastStatus);};
+const notice=(key)=>{lastStatus=key;status.textContent=key?t(key):'';};
+async function api(action,body){
+ const response=await fetch('/api/'+action,body===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json','X-Android-Control':'1'},body:JSON.stringify(body)});
+ const value=await response.json();if(!response.ok)throw Object.assign(new Error(t(value.code||'commandFailed')),{translationKey:value.code||'commandFailed'});return value;
+}
+function screen(){
+ const previous=rfb;rfb=null;if(previous)previous.disconnect();$('#screen').replaceChildren();
+ if(!selected)return;connectedSerial=selected;
+ rfb=new RFB($('#screen'),`${location.protocol==='https:'?'wss':'ws'}://${location.host}/websockify`);rfb.scaleViewport=true;
+ const current=rfb;
+ rfb.addEventListener('disconnect',()=>{if(rfb===current&&!document.hidden){$('.dot').classList.remove('online');notice('disconnected');}});
+ rfb.addEventListener('connect',()=>{$('.dot').classList.add('online');});
+}
+function options(select,items,empty){select.replaceChildren(...(items.length?items:[{value:'',label:empty}]).map(item=>new Option(item.label,item.value)));}
+async function refresh(){
+ const chosenAvd=$('#avds').value;
+ const data=await api('state');lastState=data;selected=data.devices.some(d=>d.serial===data.selected&&d.status==='device')?data.selected:null;
+ document.body.dataset.empty=String(!selected);
+ const active=data.devices.find(d=>d.serial===selected);
+ $('#device-button').setAttribute('aria-label',active?t('deviceNamed',{name:active.name}):t('chooseDevice'));
+ $('#device-name').textContent=active?.name||t('none');$('#device-port').textContent=selected?.replace('emulator-','')||'';
+ $('.dot').classList.toggle('online',!!selected);$('#phone').hidden=!selected;$('#empty').hidden=!!selected;
+ $('#empty-start').textContent=data.avds.length?t('launchNamed',{name:data.avds[0]}):t('noAvds');$('#empty-start').disabled=busy||!data.avds.length;
+ $('#empty-start').dataset.avd=data.avds[0]||'';
+ if(selected&&selected!==connectedSerial)screen();
+ if(!selected&&connectedSerial){connectedSerial=null;screen();}
+ options($('#devices'),data.devices.map(d=>({value:d.serial,label:`${d.name} · ${d.serial}${d.status==='device'?'':' · '+d.status}`})),t('noRunning'));
+ $('#devices').value=selected||'';
+ options($('#avds'),data.avds.map(name=>({value:name,label:name})),t('noAvds'));
+ if(data.avds.includes(chosenAvd))$('#avds').value=chosenAvd;
+ $('#start').disabled=busy||!data.avds.length;document.querySelectorAll('[data-key],#send,#screenshot,#rotate').forEach(b=>b.disabled=!selected);
+ if(pendingSerial){const device=data.devices.find(d=>d.serial===pendingSerial&&d.status==='device');if(device){await api('select',{serial:device.serial});pendingSerial=null;await refresh();notice('connected');}else notice('starting');}
+}
+$('#refresh').onclick=()=>{closePopovers();refresh().catch(report);};
+$('#empty-refresh').onclick=()=>refresh().catch(report);
+$('#devices').onchange=async()=>{try{await api('select',{serial:$('#devices').value});await refresh();closePopovers();notice('');}catch(e){report(e);}};
+$('#start').onclick=async()=>{busy=true;$('#start').disabled=true;try{const value=await api('start',{avd:$('#avds').value});pendingSerial=value.serial;$('#launch').open=false;closePopovers();notice('starting');}catch(e){report(e);}finally{busy=false;await refresh().catch(report);}};
+document.querySelectorAll('[data-key]').forEach(button=>button.onclick=()=>api('key',{key:button.dataset.key}).then(()=>rfb?.focus()).catch(report));
+$('#input form').onsubmit=async event=>{event.preventDefault();const text=$('#text').value;if(!text)return;$('#send').disabled=true;try{await api('paste',{text});$('#text').value='';closePopovers();notice('sent');rfb?.focus();}catch(e){report(e);}finally{$('#send').disabled=!selected;}};
+const popovers=[['device-button','device-popover'],['text-toggle','input'],['more-toggle','more']];
+function closePopovers(focus=false){for(const [button,panel]of popovers){if(!$('#'+panel).hidden&&focus)$('#'+button).focus();$('#'+panel).hidden=true;$('#'+button).setAttribute('aria-expanded','false');}}
+function togglePopover(button,panel){const open=$('#'+panel).hidden;closePopovers();$('#'+panel).hidden=!open;$('#'+button).setAttribute('aria-expanded',String(open));if(open&&panel==='input')$('#text').focus();}
+for(const [button,panel]of popovers)$('#'+button).onclick=()=>togglePopover(button,panel);
+$('#cancel-text').onclick=()=>closePopovers(true);
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closePopovers(true);});
+document.addEventListener('pointerdown',event=>{if(!event.target.closest('header'))closePopovers();});
+$('#text').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();if(!$('#send').disabled)$('#input form').requestSubmit();}});
+function showLaunch(){closePopovers();togglePopover('device-button','device-popover');$('#launch').open=true;$('#avds').focus();}
+$('#show-launch').onclick=showLaunch;$('#other-avd').onclick=showLaunch;
+$('#empty-start').onclick=()=>{if($('#empty-start').dataset.avd){$('#avds').value=$('#empty-start').dataset.avd;$('#start').click();}};
+$('#reconnect').onclick=()=>{closePopovers();if(selected){notice('');screen();}else refresh().catch(report);};
+$('#screenshot').onclick=()=>{const canvas=$('#screen canvas');if(!canvas){notice('waitImage');return;}canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${selected}-${new Date().toISOString().replaceAll(':','-')}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');};
+$('#rotate').onclick=()=>{if(!rfb)return;rfb.sendKey(0xffe9,'AltLeft',true);rfb.sendKey(0x72,'KeyR');rfb.sendKey(0xffe9,'AltLeft',false);rfb.focus();};
+function applyLanguage(preference){
+ locale=resolveLanguage(preference,navigator.languages);
+ document.documentElement.lang=locale;
+ document.title=t('launch');
+ for(const [attribute,target]of [['data-i18n','textContent'],['data-i18n-label','aria-label'],['data-i18n-title','title'],['data-i18n-placeholder','placeholder']]){
+   document.querySelectorAll('['+attribute+']').forEach(element=>{
+     const value=t(element.getAttribute(attribute));
+     if(target==='textContent')element.textContent=value;else element.setAttribute(target,value);
+   });
+ }
+ if(lastStatus)status.textContent=t(lastStatus);
+ if(lastState){
+   const active=lastState.devices.find(d=>d.serial===selected);
+   $('#device-name').textContent=active?.name||t('none');
+   $('#device-button').setAttribute('aria-label',active?t('deviceNamed',{name:active.name}):t('chooseDevice'));
+   $('#empty-start').textContent=lastState.avds.length?t('launchNamed',{name:lastState.avds[0]}):t('noAvds');
+ }
+}
+window.addEventListener('bb-android-language',event=>{applyLanguage(event.detail);refresh().catch(report);});
+window.addEventListener('languagechange',()=>{if(!window.bbAndroidLanguage)applyLanguage('auto');});
+applyLanguage(locale);
+await refresh().catch(report);
+timer=setInterval(()=>{if(!document.hidden)refresh().catch(report);},5000);
+window.addEventListener('pagehide',()=>{clearInterval(timer);rfb?.disconnect();},{once:true});
+
+</script></body></html>

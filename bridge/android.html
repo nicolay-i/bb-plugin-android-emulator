@@ -38,7 +38,8 @@
 <button class="icon-button" id="empty-refresh" aria-label="Refresh list" data-i18n-label="refresh" title="Refresh list" data-i18n-title="refresh"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v5h-5"></path></svg></button>
 <section id="device-popover" class="popover" aria-label="Choose device" data-i18n-label="chooseDevice" hidden><label class="field-label" for="devices" data-i18n="running">Running emulators</label><select id="devices"><option value="" data-i18n="connecting">Connecting…</option></select><details id="launch"><summary data-i18n="launch">Start emulator</summary><div><select id="avds" aria-label="Available AVD" data-i18n-label="avd"></select><button class="primary" id="start" data-i18n="start">Start</button></div></details></section>
 <section id="input" class="popover" aria-label="Enter text" data-i18n-label="input" hidden><form><label for="text" data-i18n="textLabel">Text to device</label><textarea id="text" rows="3" placeholder="Paste or type text…" data-i18n-placeholder="placeholder"></textarea><div class="form-actions"><span class="hint" data-i18n="shortcut">Ctrl+Enter to send</span><span class="spacer"></span><button class="cancel" id="cancel-text" type="button" data-i18n="cancel">Cancel</button><button class="primary" id="send" type="submit" data-i18n="send">Send</button></div></form></section>
-<div id="more" class="popover menu" hidden><button id="refresh" data-i18n="refresh">Refresh list</button><button id="reconnect" data-i18n="reconnect">Reconnect screen</button><button id="show-launch" data-i18n="other">Another AVD or launch options</button></div>
+<div id="more" class="popover menu" hidden><button id="refresh" data-i18n="refresh">Refresh list</button><button id="reconnect" data-i18n="reconnect">Reconnect screen</button><button id="clipboard-toggle" data-i18n="clipboard" aria-expanded="false" aria-controls="clipboard">Android clipboard</button><button id="show-launch" data-i18n="other">Another AVD or launch options</button><button id="stop" data-i18n="stop" disabled>Turn off emulator</button></div>
+<section id="clipboard" class="popover" aria-label="Android clipboard" data-i18n-label="clipboard" hidden><label class="field-label" for="clipboard-text" data-i18n="clipboardLabel">Text from Android</label><p class="hint" data-i18n="clipboardHelp">Copy text in Android, then refresh here.</p><textarea id="clipboard-text" rows="4" readonly aria-label="Text from Android" data-i18n-label="clipboardLabel"></textarea><div class="form-actions"><button id="clipboard-refresh" data-i18n="clipboardRefresh">Refresh</button><span class="spacer"></span><button class="primary" id="clipboard-copy" data-i18n="copy" disabled>Copy to computer</button></div></section>
 </header>
 <main id="stage"><div id="phone" hidden><div id="screen"></div></div><section id="empty"><div class="empty-icon"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg></div><div><h1 data-i18n="emptyTitle">Emulator is not running</h1><p data-i18n="emptyBody">The panel will connect automatically when a device finishes booting.</p></div><button class="primary" id="empty-start" data-i18n="launch">Start emulator</button><button id="other-avd" data-i18n="other">Another AVD or launch options</button></section></main>
 <p id="status" role="status" aria-live="polite"></p>
@@ -47,6 +48,8 @@
 
 import RFB from './core/rfb.js';
 import {resolveLanguage,translate} from './i18n.js';
+import {attachUnicodeInput} from './text-input.js';
+import {copyToComputer} from './clipboard.js';
 let locale=resolveLanguage(window.bbAndroidLanguage||new URL(location.href).searchParams.get('lang')||'auto',navigator.languages);
 const t=(key,values)=>translate(locale,key,values);
 let lastState=null,lastStatus=null;
@@ -63,13 +66,18 @@ function screen(){
  if(!selected)return;connectedSerial=selected;
  rfb=new RFB($('#screen'),`${location.protocol==='https:'?'wss':'ws'}://${location.host}/websockify`);rfb.scaleViewport=true;
  const current=rfb;
- rfb.addEventListener('disconnect',()=>{if(rfb===current&&!document.hidden){$('.dot').classList.remove('online');notice('disconnected');}});
- rfb.addEventListener('connect',()=>{$('.dot').classList.add('online');});
+ rfb.addEventListener('disconnect',()=>{if(rfb===current){connectedSerial=null;$('.dot').classList.remove('online');notice('disconnected');}});
+ rfb.addEventListener('connect',()=>{if(rfb===current){$('.dot').classList.add('online');notice('');}});
 }
 function options(select,items,empty){select.replaceChildren(...(items.length?items:[{value:'',label:empty}]).map(item=>new Option(item.label,item.value)));}
 async function refresh(){
+ if(busy)return;
  const chosenAvd=$('#avds').value;
- const data=await api('state');lastState=data;selected=data.devices.some(d=>d.serial===data.selected&&d.status==='device')?data.selected:null;
+ const data=await api('state');
+ if(busy)return;
+ const available=data.devices.find(device=>device.status==='device');
+ if(!data.selected&&available){await api('select',{serial:available.serial});return refresh();}
+ lastState=data;selected=data.devices.some(d=>d.serial===data.selected&&d.status==='device')?data.selected:null;
  document.body.dataset.empty=String(!selected);
  const active=data.devices.find(d=>d.serial===selected);
  $('#device-button').setAttribute('aria-label',active?t('deviceNamed',{name:active.name}):t('chooseDevice'));
@@ -83,7 +91,7 @@ async function refresh(){
  $('#devices').value=selected||'';
  options($('#avds'),data.avds.map(name=>({value:name,label:name})),t('noAvds'));
  if(data.avds.includes(chosenAvd))$('#avds').value=chosenAvd;
- $('#start').disabled=busy||!data.avds.length;document.querySelectorAll('[data-key],#send,#screenshot,#rotate').forEach(b=>b.disabled=!selected);
+ $('#start').disabled=busy||!data.avds.length;document.querySelectorAll('[data-key],#send,#screenshot,#rotate,#stop').forEach(b=>b.disabled=!selected);
  if(pendingSerial){const device=data.devices.find(d=>d.serial===pendingSerial&&d.status==='device');if(device){await api('select',{serial:device.serial});pendingSerial=null;await refresh();notice('connected');}else notice('starting');}
 }
 $('#refresh').onclick=()=>{closePopovers();refresh().catch(report);};
@@ -92,10 +100,30 @@ $('#devices').onchange=async()=>{try{await api('select',{serial:$('#devices').va
 $('#start').onclick=async()=>{busy=true;$('#start').disabled=true;try{const value=await api('start',{avd:$('#avds').value});pendingSerial=value.serial;$('#launch').open=false;closePopovers();notice('starting');}catch(e){report(e);}finally{busy=false;await refresh().catch(report);}};
 document.querySelectorAll('[data-key]').forEach(button=>button.onclick=()=>api('key',{key:button.dataset.key}).then(()=>rfb?.focus()).catch(report));
 $('#input form').onsubmit=async event=>{event.preventDefault();const text=$('#text').value;if(!text)return;$('#send').disabled=true;try{await api('paste',{text});$('#text').value='';closePopovers();notice('sent');rfb?.focus();}catch(e){report(e);}finally{$('#send').disabled=!selected;}};
-const popovers=[['device-button','device-popover'],['text-toggle','input'],['more-toggle','more']];
-function closePopovers(focus=false){for(const [button,panel]of popovers){if(!$('#'+panel).hidden&&focus)$('#'+button).focus();$('#'+panel).hidden=true;$('#'+button).setAttribute('aria-expanded','false');}}
+const popovers=[['device-button','device-popover'],['text-toggle','input'],['more-toggle','more'],['clipboard-toggle','clipboard']];
+function closePopovers(focus=false){for(const [button,panel]of popovers){if(!$('#'+panel).hidden&&focus)$(panel==='clipboard'?'#more-toggle':'#'+button).focus();$('#'+panel).hidden=true;$('#'+button).setAttribute('aria-expanded','false');}}
 function togglePopover(button,panel){const open=$('#'+panel).hidden;closePopovers();$('#'+panel).hidden=!open;$('#'+button).setAttribute('aria-expanded',String(open));if(open&&panel==='input')$('#text').focus();}
 for(const [button,panel]of popovers)$('#'+button).onclick=()=>togglePopover(button,panel);
+async function readClipboard(){
+ $('#clipboard-refresh').disabled=true;$('#clipboard-copy').disabled=true;$('#clipboard-text').value='';
+ try{
+   const {text}=await api('clipboard',{});
+   $('#clipboard-text').value=text;
+   $('#clipboard-copy').disabled=!text;
+   notice(text?'':'clipboardEmpty');
+ }catch(error){$('#clipboard-text').value='';$('#clipboard-copy').disabled=true;report(error);}
+ finally{$('#clipboard-refresh').disabled=false;}
+}
+$('#clipboard-toggle').onclick=()=>{closePopovers();togglePopover('clipboard-toggle','clipboard');readClipboard();};
+$('#clipboard-refresh').onclick=readClipboard;
+$('#clipboard-copy').onclick=async()=>{
+ const button=$('#clipboard-copy');button.disabled=true;
+ try{
+   const ok=await copyToComputer($('#clipboard-text').value);
+   notice(ok?'copied':'copyManual');
+   if(!ok){$('#clipboard-text').focus();$('#clipboard-text').select();}
+ }finally{button.disabled=!$('#clipboard-text').value;}
+};
 $('#cancel-text').onclick=()=>closePopovers(true);
 document.addEventListener('keydown',event=>{if(event.key==='Escape')closePopovers(true);});
 document.addEventListener('pointerdown',event=>{if(!event.target.closest('header'))closePopovers();});
@@ -103,6 +131,15 @@ $('#text').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.ctr
 function showLaunch(){closePopovers();togglePopover('device-button','device-popover');$('#launch').open=true;$('#avds').focus();}
 $('#show-launch').onclick=showLaunch;$('#other-avd').onclick=showLaunch;
 $('#empty-start').onclick=()=>{if($('#empty-start').dataset.avd){$('#avds').value=$('#empty-start').dataset.avd;$('#start').click();}};
+$('#stop').onclick=async()=>{
+ const serial=selected;
+ if(!serial||!window.confirm(t('stopConfirm',{name:serial})))return;
+ busy=true;closePopovers();notice('stopping');
+ document.querySelectorAll('[data-key],#send,#screenshot,#rotate,#stop,#start,#empty-start,#devices').forEach(button=>button.disabled=true);
+ try{await api('stop',{serial});pendingSerial=null;notice('stopped');}
+ catch(error){report(error);}
+ finally{busy=false;$('#devices').disabled=false;await refresh().catch(report);}
+};
 $('#reconnect').onclick=()=>{closePopovers();if(selected){notice('');screen();}else refresh().catch(report);};
 $('#screenshot').onclick=()=>{const canvas=$('#screen canvas');if(!canvas){notice('waitImage');return;}canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${selected}-${new Date().toISOString().replaceAll(':','-')}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');};
 $('#rotate').onclick=()=>{if(!rfb)return;rfb.sendKey(0xffe9,'AltLeft',true);rfb.sendKey(0x72,'KeyR');rfb.sendKey(0xffe9,'AltLeft',false);rfb.focus();};
@@ -129,6 +166,7 @@ window.addEventListener('languagechange',()=>{if(!window.bbAndroidLanguage)apply
 applyLanguage(locale);
 await refresh().catch(report);
 timer=setInterval(()=>{if(!document.hidden)refresh().catch(report);},5000);
-window.addEventListener('pagehide',()=>{clearInterval(timer);rfb?.disconnect();},{once:true});
+const detachUnicodeInput=attachUnicodeInput($('#screen'),text=>api('paste',{text}),report);
+window.addEventListener('pagehide',()=>{detachUnicodeInput();clearInterval(timer);rfb?.disconnect();},{once:true});
 
 </script></body></html>

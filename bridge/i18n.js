@@ -63,7 +63,19 @@ export const messages = {
     "tooLarge": "Request is too large.",
     "unknownCommand": "Unknown command.",
     "start": "Start",
-    "unknownAvd": "Unknown AVD."
+    "unknownAvd": "Unknown AVD.",
+    "clipboard": "Android clipboard",
+    "clipboardLabel": "Text from Android",
+    "clipboardHelp": "Copy text in Android, then refresh here.",
+    "clipboardRefresh": "Refresh",
+    "copy": "Copy to computer",
+    "copied": "Copied to your computer’s clipboard.",
+    "copyManual": "Copy the selected text manually: clipboard access is unavailable.",
+    "clipboardEmpty": "The Android clipboard is empty or contains no text.",
+    "stop": "Turn off emulator",
+    "stopConfirm": "Turn off {name}? Unsaved app state may be lost.",
+    "stopping": "Turning off…",
+    "stopped": "Emulator turned off."
   },
   "ru": {
     "connecting": "Подключение…",
@@ -113,7 +125,19 @@ export const messages = {
     "tooLarge": "Слишком большой запрос.",
     "unknownCommand": "Неизвестная команда.",
     "start": "Запустить",
-    "unknownAvd": "Неизвестный AVD."
+    "unknownAvd": "Неизвестный AVD.",
+    "clipboard": "Буфер Android",
+    "clipboardLabel": "Текст из Android",
+    "clipboardHelp": "Скопируйте текст в Android, затем нажмите «Обновить».",
+    "clipboardRefresh": "Обновить",
+    "copy": "Копировать на компьютер",
+    "copied": "Скопировано в буфер компьютера.",
+    "copyManual": "Скопируйте выделенный текст вручную: запись в буфер недоступна.",
+    "clipboardEmpty": "Буфер Android пуст или содержит не текст.",
+    "stop": "Выключить эмулятор",
+    "stopConfirm": "Выключить {name}? Несохранённое состояние приложений может потеряться.",
+    "stopping": "Выключение…",
+    "stopped": "Эмулятор выключен."
   },
   "de": {
     "connecting": "Verbindung wird hergestellt…",
@@ -163,7 +187,19 @@ export const messages = {
     "tooLarge": "Anfrage ist zu groß.",
     "unknownCommand": "Unbekannter Befehl.",
     "start": "Starten",
-    "unknownAvd": "Unbekanntes AVD."
+    "unknownAvd": "Unbekanntes AVD.",
+    "clipboard": "Android-Zwischenablage",
+    "clipboardLabel": "Text aus Android",
+    "clipboardHelp": "Text in Android kopieren und hier aktualisieren.",
+    "clipboardRefresh": "Aktualisieren",
+    "copy": "Auf Computer kopieren",
+    "copied": "In die Zwischenablage des Computers kopiert.",
+    "copyManual": "Den markierten Text manuell kopieren: Zugriff auf die Zwischenablage nicht verfügbar.",
+    "clipboardEmpty": "Die Android-Zwischenablage ist leer oder enthält keinen Text.",
+    "stop": "Emulator ausschalten",
+    "stopConfirm": "{name} ausschalten? Nicht gespeicherte App-Daten können verloren gehen.",
+    "stopping": "Wird ausgeschaltet…",
+    "stopped": "Emulator ausgeschaltet."
   },
   "fr": {
     "connecting": "Connexion…",
@@ -213,7 +249,19 @@ export const messages = {
     "tooLarge": "Requête trop volumineuse.",
     "unknownCommand": "Commande inconnue.",
     "start": "Démarrer",
-    "unknownAvd": "AVD inconnu."
+    "unknownAvd": "AVD inconnu.",
+    "clipboard": "Presse-papiers Android",
+    "clipboardLabel": "Texte depuis Android",
+    "clipboardHelp": "Copiez le texte dans Android, puis actualisez ici.",
+    "clipboardRefresh": "Actualiser",
+    "copy": "Copier sur l’ordinateur",
+    "copied": "Copié dans le presse-papiers de l’ordinateur.",
+    "copyManual": "Copiez le texte sélectionné manuellement : accès au presse-papiers indisponible.",
+    "clipboardEmpty": "Le presse-papiers Android est vide ou ne contient pas de texte.",
+    "stop": "Éteindre l’émulateur",
+    "stopConfirm": "Éteindre {name} ? Les données non enregistrées des applications peuvent être perdues.",
+    "stopping": "Arrêt en cours…",
+    "stopped": "Émulateur éteint."
   },
   "es": {
     "connecting": "Conectando…",
@@ -263,7 +311,19 @@ export const messages = {
     "tooLarge": "La solicitud es demasiado grande.",
     "unknownCommand": "Comando desconocido.",
     "start": "Iniciar",
-    "unknownAvd": "AVD desconocido."
+    "unknownAvd": "AVD desconocido.",
+    "clipboard": "Portapapeles de Android",
+    "clipboardLabel": "Texto de Android",
+    "clipboardHelp": "Copia texto en Android y actualiza aquí.",
+    "clipboardRefresh": "Actualizar",
+    "copy": "Copiar al ordenador",
+    "copied": "Copiado al portapapeles del ordenador.",
+    "copyManual": "Copia el texto seleccionado manualmente: no hay acceso al portapapeles.",
+    "clipboardEmpty": "El portapapeles de Android está vacío o no contiene texto.",
+    "stop": "Apagar emulador",
+    "stopConfirm": "¿Apagar {name}? Puede perderse el estado no guardado de las aplicaciones.",
+    "stopping": "Apagando…",
+    "stopped": "Emulador apagado."
   },
   "pt": {
     "connecting": "A ligar…",
@@ -313,7 +373,19 @@ export const messages = {
     "tooLarge": "Pedido demasiado grande.",
     "unknownCommand": "Comando desconhecido.",
     "start": "Iniciar",
-    "unknownAvd": "AVD desconhecido."
+    "unknownAvd": "AVD desconhecido.",
+    "clipboard": "Área de transferência Android",
+    "clipboardLabel": "Texto do Android",
+    "clipboardHelp": "Copie texto no Android e atualize aqui.",
+    "clipboardRefresh": "Atualizar",
+    "copy": "Copiar para o computador",
+    "copied": "Copiado para a área de transferência do computador.",
+    "copyManual": "Copie o texto selecionado manualmente: o acesso à área de transferência está indisponível.",
+    "clipboardEmpty": "A área de transferência Android está vazia ou não contém texto.",
+    "stop": "Desligar emulador",
+    "stopConfirm": "Desligar {name}? O estado não guardado das aplicações pode perder-se.",
+    "stopping": "Desligando…",
+    "stopped": "Emulador desligado."
   },
   "it": {
     "connecting": "Connessione…",
@@ -363,7 +435,19 @@ export const messages = {
     "tooLarge": "Richiesta troppo grande.",
     "unknownCommand": "Comando sconosciuto.",
     "start": "Avvia",
-    "unknownAvd": "AVD sconosciuto."
+    "unknownAvd": "AVD sconosciuto.",
+    "clipboard": "Appunti Android",
+    "clipboardLabel": "Testo da Android",
+    "clipboardHelp": "Copia il testo in Android, poi aggiorna qui.",
+    "clipboardRefresh": "Aggiorna",
+    "copy": "Copia sul computer",
+    "copied": "Copiato negli appunti del computer.",
+    "copyManual": "Copia il testo selezionato manualmente: accesso agli appunti non disponibile.",
+    "clipboardEmpty": "Gli appunti Android sono vuoti o non contengono testo.",
+    "stop": "Spegni emulatore",
+    "stopConfirm": "Spegnere {name}? Lo stato non salvato delle app potrebbe andare perso.",
+    "stopping": "Spegnimento…",
+    "stopped": "Emulatore spento."
   },
   "pl": {
     "connecting": "Łączenie…",
@@ -413,7 +497,19 @@ export const messages = {
     "tooLarge": "Żądanie jest zbyt duże.",
     "unknownCommand": "Nieznane polecenie.",
     "start": "Uruchom",
-    "unknownAvd": "Nieznany AVD."
+    "unknownAvd": "Nieznany AVD.",
+    "clipboard": "Schowek Androida",
+    "clipboardLabel": "Tekst z Androida",
+    "clipboardHelp": "Skopiuj tekst w Androidzie, a następnie odśwież tutaj.",
+    "clipboardRefresh": "Odśwież",
+    "copy": "Kopiuj na komputer",
+    "copied": "Skopiowano do schowka komputera.",
+    "copyManual": "Skopiuj zaznaczony tekst ręcznie: brak dostępu do schowka.",
+    "clipboardEmpty": "Schowek Androida jest pusty lub nie zawiera tekstu.",
+    "stop": "Wyłącz emulator",
+    "stopConfirm": "Wyłączyć {name}? Niezapisany stan aplikacji może zostać utracony.",
+    "stopping": "Wyłączanie…",
+    "stopped": "Emulator wyłączony."
   },
   "uk": {
     "connecting": "Підключення…",
@@ -463,7 +559,19 @@ export const messages = {
     "tooLarge": "Завеликий запит.",
     "unknownCommand": "Невідома команда.",
     "start": "Запустити",
-    "unknownAvd": "Невідомий AVD."
+    "unknownAvd": "Невідомий AVD.",
+    "clipboard": "Буфер Android",
+    "clipboardLabel": "Текст з Android",
+    "clipboardHelp": "Скопіюйте текст в Android, потім натисніть «Оновити».",
+    "clipboardRefresh": "Оновити",
+    "copy": "Копіювати на комп’ютер",
+    "copied": "Скопійовано в буфер комп’ютера.",
+    "copyManual": "Скопіюйте виділений текст вручну: запис у буфер недоступний.",
+    "clipboardEmpty": "Буфер Android порожній або не містить тексту.",
+    "stop": "Вимкнути емулятор",
+    "stopConfirm": "Вимкнути {name}? Незбережений стан застосунків може бути втрачено.",
+    "stopping": "Вимкнення…",
+    "stopped": "Емулятор вимкнено."
   },
   "tr": {
     "connecting": "Bağlanıyor…",
@@ -513,7 +621,19 @@ export const messages = {
     "tooLarge": "İstek çok büyük.",
     "unknownCommand": "Bilinmeyen komut.",
     "start": "Başlat",
-    "unknownAvd": "Bilinmeyen AVD."
+    "unknownAvd": "Bilinmeyen AVD.",
+    "clipboard": "Android panosu",
+    "clipboardLabel": "Android’den metin",
+    "clipboardHelp": "Android’de metni kopyalayın, ardından burada yenileyin.",
+    "clipboardRefresh": "Yenile",
+    "copy": "Bilgisayara kopyala",
+    "copied": "Bilgisayarın panosuna kopyalandı.",
+    "copyManual": "Seçili metni elle kopyalayın: panoya erişilemiyor.",
+    "clipboardEmpty": "Android panosu boş veya metin içermiyor.",
+    "stop": "Emülatörü kapat",
+    "stopConfirm": "{name} kapatılsın mı? Uygulamaların kaydedilmemiş durumu kaybolabilir.",
+    "stopping": "Kapatılıyor…",
+    "stopped": "Emülatör kapatıldı."
   },
   "ja": {
     "connecting": "接続中…",
@@ -563,7 +683,19 @@ export const messages = {
     "tooLarge": "リクエストが大きすぎます。",
     "unknownCommand": "不明なコマンドです。",
     "start": "起動",
-    "unknownAvd": "不明なAVDです。"
+    "unknownAvd": "不明なAVDです。",
+    "clipboard": "Androidのクリップボード",
+    "clipboardLabel": "Androidからのテキスト",
+    "clipboardHelp": "Androidでテキストをコピーし、ここで更新してください。",
+    "clipboardRefresh": "更新",
+    "copy": "パソコンにコピー",
+    "copied": "パソコンのクリップボードにコピーしました。",
+    "copyManual": "クリップボードにアクセスできません。選択したテキストを手動でコピーしてください。",
+    "clipboardEmpty": "Androidのクリップボードは空か、テキストが含まれていません。",
+    "stop": "エミュレーターを終了",
+    "stopConfirm": "{name}を終了しますか？アプリの未保存の状態が失われる可能性があります。",
+    "stopping": "終了中…",
+    "stopped": "エミュレーターを終了しました。"
   },
   "zh": {
     "connecting": "正在连接…",
@@ -613,7 +745,19 @@ export const messages = {
     "tooLarge": "请求过大。",
     "unknownCommand": "未知命令。",
     "start": "启动",
-    "unknownAvd": "未知的AVD。"
+    "unknownAvd": "未知的AVD。",
+    "clipboard": "Android剪贴板",
+    "clipboardLabel": "来自Android的文本",
+    "clipboardHelp": "在Android中复制文本，然后在此刷新。",
+    "clipboardRefresh": "刷新",
+    "copy": "复制到电脑",
+    "copied": "已复制到电脑剪贴板。",
+    "copyManual": "无法访问剪贴板，请手动复制所选文本。",
+    "clipboardEmpty": "Android剪贴板为空或不包含文本。",
+    "stop": "关闭模拟器",
+    "stopConfirm": "关闭 {name}？应用中未保存的状态可能丢失。",
+    "stopping": "正在关闭…",
+    "stopped": "模拟器已关闭。"
   }
 };
 

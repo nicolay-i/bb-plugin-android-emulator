@@ -26,6 +26,7 @@ export default async function plugin(bb:BbPluginApi){
     list:cliCommand({summary:'Работающие эмуляторы и доступные AVD',options:{json},run:(_,ctx)=>control({action:'state'},ctx.signal)}),
     select:cliCommand({summary:'Подключить экран к эмулятору (общий для всех зрителей)',positionals:[{name:'serial',description:'Например emulator-5554',required:true}],options:{json},run:(input,ctx)=>control({action:'select',serial:input.positionals.serial},ctx.signal)}),
     start:cliCommand({summary:'Запустить AVD вручную; остаётся работать после закрытия панели',positionals:[{name:'avd',description:'Имя AVD из list',required:true}],options:{json},run:(input,ctx)=>control({action:'start',avd:input.positionals.avd},ctx.signal)}),
+    stop:cliCommand({summary:'Выключить выбранный эмулятор; несохранённое состояние может потеряться',positionals:[{name:'serial',description:'Serial выбранного эмулятора из list',required:true}],options:{json},run:(input,ctx)=>control({action:'stop',serial:input.positionals.serial},ctx.signal)}),
     key:cliCommand({summary:'Системная кнопка Android',options:{key:{type:'enum',values:['back','home','recent'],required:true,description:'Кнопка Android'},json},run:(input,ctx)=>control({action:'key',key:input.options.key},ctx.signal)}),
     paste:cliCommand({summary:'Вставить текст в выбранное поле (не передавайте секреты через CLI)',positionals:[{name:'text',description:'Текст до 64 КБ',required:true}],options:{json},run:(input,ctx)=>control({action:'paste',text:input.positionals.text},ctx.signal)}),
   }}));

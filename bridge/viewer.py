@@ -39,7 +39,8 @@ class Android:
                 name = parts[0]
                 if parts[1] == 'device':
                     try:
-                        name = self.adb('emu', 'avd', 'name', serial=parts[0]).splitlines()[0]
+                        lines = self.adb('emu', 'avd', 'name', serial=parts[0]).splitlines()
+                        name = lines[0] if lines else name
                     except subprocess.SubprocessError:
                         pass
                 devices.append({'serial': parts[0], 'name': name, 'status': parts[1]})
@@ -102,8 +103,28 @@ class Android:
                 return {'selected': self.serial}
             if not self.serial:
                 raise ValueError('Сначала выберите работающий эмулятор.')
+            if action == 'stop':
+                target = body.get('serial')
+                if (not isinstance(target, str) or not re.fullmatch(r'emulator-\d+', target)
+                        or target != self.serial
+                        or not any(d['serial'] == target and d['status'] == 'device' for d in self.state()['devices'])):
+                    raise ValueError('Эмулятор недоступен. Обновите список.')
+                self.adb('emu', 'kill', serial=target)
+                try:
+                    self.adb('wait-for-disconnect', serial=target)
+                finally:
+                    self.close()
+                return {'stopped': target}
             if action == 'key' and body.get('key') in KEYS:
                 self.adb('shell', 'input', 'keyevent', KEYS[body['key']])
+            elif action == 'clipboard':
+                try:
+                    text = subprocess.check_output(['xclip', '-selection', 'clipboard', '-out', '-target', 'UTF8_STRING'], timeout=5, stderr=subprocess.DEVNULL).decode('utf-8')
+                except subprocess.CalledProcessError:
+                    text = ''  # Empty or non-text clipboard selection.
+                if len(text.encode('utf-8')) > 65536:
+                    raise ValueError('Слишком большой запрос.')
+                return {'text': text}
             elif action == 'paste':
                 text = body.get('text')
                 if not isinstance(text, str) or not text or len(text.encode('utf-8')) > 65536:
@@ -143,10 +164,10 @@ class PanelHandler(ProxyRequestHandler):
                 self.reply(200, android.state())
             except (OSError, subprocess.SubprocessError):
                 self.reply(502, {'error': 'Не удалось получить список. Проверьте Android SDK.', 'code':'listFailed'})
-        elif path in ('/', '/android.html', '/i18n.js'):
-            content = (ROOT / ('i18n.js' if path == '/i18n.js' else 'android.html')).read_bytes()
+        elif path in ('/', '/android.html', '/i18n.js', '/text-input.js', '/clipboard.js'):
+            content = (ROOT / (path[1:] if path in ('/i18n.js', '/text-input.js', '/clipboard.js') else 'android.html')).read_bytes()
             self.send_response(200)
-            self.send_header('Content-Type', ('text/javascript' if path == '/i18n.js' else 'text/html') + '; charset=utf-8')
+            self.send_header('Content-Type', ('text/javascript' if path.endswith('.js') else 'text/html') + '; charset=utf-8')
             self.send_header('Cache-Control', 'no-store')
             self.send_header('Content-Length', str(len(content)))
             self.end_headers()
@@ -167,10 +188,10 @@ class PanelHandler(ProxyRequestHandler):
             body = json.loads(self.rfile.read(size))
             if not isinstance(body, dict):
                 raise ValueError('Нужен объект JSON.')
-            action = {'/api/key':'key', '/api/paste':'paste', '/api/start':'start', '/api/select':'select'}.get(self.path)
+            action = {'/api/key':'key', '/api/paste':'paste', '/api/start':'start', '/api/stop':'stop', '/api/select':'select', '/api/clipboard':'clipboard'}.get(self.path)
             self.reply(200, android.control(action, body))
         except (ValueError, UnicodeDecodeError) as error:
-            self.reply(400, {'error': str(error), 'code': {'Эмулятор недоступен. Обновите список.': 'unavailable', 'Неизвестный AVD.': 'unknownAvd', 'Этот AVD уже запущен.': 'alreadyRunning', 'Нет свободного порта эмулятора.': 'noPort', 'Эмулятор не запустился. Проверьте emulator-launch.log.': 'startFailed', 'Сначала выберите работающий эмулятор.': 'selectFirst', 'Нужен текст размером от 1 до 65536 байт.': 'invalidText', 'Неизвестная команда.': 'unknownCommand'}.get(str(error), 'invalid')})
+            self.reply(400, {'error': str(error), 'code': {'Эмулятор недоступен. Обновите список.': 'unavailable', 'Неизвестный AVD.': 'unknownAvd', 'Этот AVD уже запущен.': 'alreadyRunning', 'Нет свободного порта эмулятора.': 'noPort', 'Эмулятор не запустился. Проверьте emulator-launch.log.': 'startFailed', 'Сначала выберите работающий эмулятор.': 'selectFirst', 'Нужен текст размером от 1 до 65536 байт.': 'invalidText', 'Неизвестная команда.': 'unknownCommand', 'Слишком большой запрос.': 'tooLarge'}.get(str(error), 'invalid')})
         except (OSError, subprocess.SubprocessError):
             self.reply(502, {'error': 'Команда не выполнена. Проверьте подключение эмулятора.', 'code':'commandFailed'})
 

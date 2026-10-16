@@ -10,6 +10,7 @@ description: Открыть экран Android в BB, выбрать или вр
 - `bb android-emulator list --json` — устройства, AVD и выбранный serial.
 - `bb android-emulator select emulator-5554 --json` — общий экран всех зрителей.
 - `bb android-emulator start bb_api34 --json` — ручной запуск AVD. Самостоятельно не останавливается.
+- `bb android-emulator stop emulator-5554 --json` — выключить выбранный эмулятор; выполнять по явной просьбе пользователя, несохранённое состояние может потеряться.
 - `bb android-emulator key --key back|home|recent --json`.
 - `bb android-emulator paste 'Текст' --json` — в активное поле. Не передавать секреты через CLI: аргументы видны в истории. Пользователь отправляет их через поле панели.
 
@@ -20,3 +21,9 @@ description: Открыть экран Android в BB, выбрать или вр
 
 Настройка: `bb plugin config android-emulator set viewerUrl https://MACHINE.tailNET.ts.net`.
 Плагин не скачивает SDK и не меняет Tailscale Serve автоматически.
+
+Граница настройки плагина: подключение к готовой Android-среде и трансляция.
+Проверяйте SDK/ADB, Emulator, существующий AVD и компоненты bridge на Android-хосте.
+Если чего-то нет, сообщите, что нужно подготовить. Установка SDK/образов/KVM,
+создание AVD и изменение его конфигурации не входят в настройку плагина.
+Ручной запуск уже созданного AVD поддерживается существующей командой start.

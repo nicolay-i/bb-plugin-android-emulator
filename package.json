@@ -31,7 +31,8 @@
     "build": "bb plugin build",
     "check": "tsc --noEmit",
     "test": "python3 -m unittest discover -s bridge -p \"test_*.py\"",
-    "test:i18n": "node bridge/i18n.test.mjs"
+    "test:i18n": "node bridge/i18n.test.mjs",
+    "test:browser-helpers": "node bridge/text-input.test.mjs && node bridge/clipboard.test.mjs"
   },
   "repository": {
     "type": "git",

@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const command = z.discriminatedUnion('action', [
   z.object({action:z.literal('state')}).strict(),
   z.object({action:z.literal('select'),serial:z.string().regex(/^emulator-\d+$/)}).strict(),
+  z.object({action:z.literal('stop'),serial:z.string().regex(/^emulator-\d+$/)}).strict(),
   z.object({action:z.literal('start'),avd:z.string().min(1).max(200)}).strict(),
   z.object({action:z.literal('key'),key:z.enum(['back','home','recent'])}).strict(),
   z.object({action:z.literal('paste'),text:z.string().min(1).max(65536)}).strict(),

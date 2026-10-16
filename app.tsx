@@ -1,5 +1,5 @@
 import { useEffect,useState,useRef } from 'react';
-import { definePluginApp,useRpc } from '@get-bb/plugin-sdk/app';
+import { definePluginApp,useRpc,experimental_copyToClipboard } from '@get-bb/plugin-sdk/app';
 import type { rpcContract } from './contract';
 import { themeTokens } from './theme';
 import { resolveLanguage,translate } from './bridge/i18n.js';
@@ -60,6 +60,18 @@ function Emulator(){
    iframe.addEventListener('load',publish);window.addEventListener('message',ready);publish();
    return()=>{iframe.removeEventListener('load',publish);window.removeEventListener('message',ready);};
  },[url,language]);
+ useEffect(()=>{
+   const iframe=frame.current;if(!iframe||!url)return;
+   const origin=new URL(url).origin;let live=true;
+   const copy=async(event:MessageEvent)=>{
+     const data=event.data;
+     if(event.source!==iframe.contentWindow||event.origin!==origin||data?.type!=='bb-android-copy'||!Number.isSafeInteger(data.id)||data.id<1||typeof data.text!=='string'||new TextEncoder().encode(data.text).length>65536)return;
+     const ok=await experimental_copyToClipboard({text:data.text});
+     if(live)iframe.contentWindow?.postMessage({type:'bb-android-copy-result',id:data.id,ok},origin);
+   };
+   window.addEventListener('message',copy);
+   return()=>{live=false;window.removeEventListener('message',copy);};
+ },[url]);
  if(!url)return <p role="status" style={{padding:16}}>{translate(language,error||'connecting')}</p>;
  return <iframe ref={frame} title="Android Emulator" src={url} style={{border:0,width:'100%',height:'100%',display:'block'}} allow="fullscreen" allowFullScreen/>;
 }

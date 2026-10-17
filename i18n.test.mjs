@@ -24,7 +24,13 @@ assert.ok(translate('en','launchNamed',{name:'<b>test</b>'}).includes('<b>test</
 assert.equal(translate('__proto__','send'),'Send');
 assert.equal(translate('en','__proto__'),'__proto__');
 const {readFileSync}=await import('node:fs');
-const html=readFileSync(new URL('./android.html',import.meta.url),'utf8');
-const used=[...html.matchAll(/data-i18n(?:-label|-title|-placeholder)?="([^"]+)"|\b(?:t|notice)\('([^']+)'/g)].map(m=>m[1]||m[2]);
-for(const key of used)assert.ok(Object.hasOwn(messages.en,key),`UI references missing key: ${key}`);
-console.log(`PASS: ${Object.keys(messages).length} languages × ${keys.length} keys, placeholders, explicit language, browser fallback`);
+const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
+const app=read('./app.tsx');
+// Host and server errors carry i18n keys that the panel translates.
+const hostErrors=[...['./host/android.ts','./host/session.ts','./server.ts'].map(read).join('\n').matchAll(/Error\('(\w+)'\)/g)].map(m=>m[1]);
+const checks=['sdk','adb','emulator','accel','avds'];
+const generated=[...checks.map(id=>`check_${id}`),...checks.filter(id=>id!=='accel').map(id=>`hint_${id}`),'hint_accel_win','hint_accel_unix'];
+const used=[...app.matchAll(/\bt\('(\w+)'/g)].map(m=>m[1]);
+for(const key of [...used,...hostErrors,...generated])assert.ok(Object.hasOwn(messages.en,key),`UI references missing key: ${key}`);
+for(const key of keys)assert.ok(generated.includes(key)||app.includes(`'${key}'`),`unused key: ${key}`);
+console.log(`PASS: ${Object.keys(messages).length} languages × ${keys.length} keys, placeholders, UI and host error coverage`);

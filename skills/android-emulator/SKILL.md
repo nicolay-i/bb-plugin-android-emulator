@@ -1,29 +1,26 @@
 ---
 name: android-emulator
-description: Открыть экран Android в BB, выбрать или вручную запустить AVD, отправить текст и системные кнопки через bb android-emulator.
+description: Show and control Android emulators on bb hosts — list AVDs and devices, start or stop an AVD, press back/home/recent, paste text — through bb android-emulator.
 ---
-Панель: в правой панели треда нажмите «+» → Android Emulator.
-Отдельная страница: Android Emulator в навигации BB.
-Нужны работающий bridge на Android-машине и Tailscale на устройстве пользователя.
+UI: thread right panel "+" → Android Emulator, or Android Emulator in bb navigation.
+The user picks the Android host there; commands use that host unless `--host` is given.
 
-Команды работают на настроенной машине через HTTPS Tailscale, независимо от машины треда:
-- `bb android-emulator list --json` — устройства, AVD и выбранный serial.
-- `bb android-emulator select emulator-5554 --json` — общий экран всех зрителей.
-- `bb android-emulator start bb_api34 --json` — ручной запуск AVD. Самостоятельно не останавливается.
-- `bb android-emulator stop emulator-5554 --json` — выключить выбранный эмулятор; выполнять по явной просьбе пользователя, несохранённое состояние может потеряться.
-- `bb android-emulator key --key back|home|recent --json`.
-- `bb android-emulator paste 'Текст' --json` — в активное поле. Не передавать секреты через CLI: аргументы видны в истории. Пользователь отправляет их через поле панели.
+- `bb android-emulator hosts --json` — bb hosts with online status.
+- `bb android-emulator list --json` — environment checks, AVDs, running devices, active serial.
+- `bb android-emulator start AVD --json` — start an existing AVD headless. It keeps running.
+- `bb android-emulator stop SERIAL --json` — shut an emulator down. Only on the user's explicit request: unsaved state may be lost.
+- `bb android-emulator key --key back|home|recent [--serial S] --json`.
+- `bb android-emulator paste 'Text' [--serial S] --json` — into the focused field, up to 64 KB. Never pass secrets: arguments stay in shell history; the user types them in the panel.
 
-Полное управление агентом уже доступно через ADB на Android-машине:
-`adb -s SERIAL shell input tap X Y`, `input swipe X1 Y1 X2 Y2 MS`,
-`exec-out screencap -p`, `shell uiautomator dump`, `logcat`.
-Не выполняйте ADB локально, если SDK находится на другой машине: используйте её терминал/SSH.
+`--serial` defaults to the active device; `--host` takes a host name or id.
 
-Настройка: `bb plugin config android-emulator set viewerUrl https://MACHINE.tailNET.ts.net`.
-Плагин не скачивает SDK и не меняет Tailscale Serve автоматически.
+For taps, swipes, screenshots, UI dumps and logs use ADB on the Android host
+(its terminal or a thread there): `adb -s SERIAL shell input tap X Y`,
+`input swipe X1 Y1 X2 Y2 MS`, `exec-out screencap -p`, `shell uiautomator dump`, `logcat`.
+Do not run ADB locally when the SDK is on another machine.
 
-Граница настройки плагина: подключение к готовой Android-среде и трансляция.
-Проверяйте SDK/ADB, Emulator, существующий AVD и компоненты bridge на Android-хосте.
-Если чего-то нет, сообщите, что нужно подготовить. Установка SDK/образов/KVM,
-создание AVD и изменение его конфигурации не входят в настройку плагина.
-Ручной запуск уже созданного AVD поддерживается существующей командой start.
+Scope: the plugin only checks the Android SDK, ADB, emulator, acceleration and AVDs.
+When a check fails, tell the user what to prepare. Installing the SDK, system images
+or KVM/WHPX, and creating or editing AVDs are outside the plugin.
+
+Connection setting: BB network (needs bb at getbb.app) or LAN / VPN (`ws://` to the host).

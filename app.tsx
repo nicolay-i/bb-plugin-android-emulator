@@ -1,81 +1,355 @@
-import { useEffect,useState,useRef } from 'react';
-import { definePluginApp,useRpc,experimental_copyToClipboard } from '@get-bb/plugin-sdk/app';
-import type { rpcContract } from './contract';
-import { themeTokens } from './theme';
-import { resolveLanguage,translate } from './bridge/i18n.js';
-function Emulator(){
- const rpc=useRpc<typeof rpcContract>();
- const [language,setLanguage]=useState(()=>resolveLanguage('auto',navigator.languages));
- const frame=useRef<HTMLIFrameElement>(null);
- const [url,setUrl]=useState(''),[error,setError]=useState('');
- useEffect(()=>{
-   let live=true;
-   async function load(){
-     try{
-       const {viewerUrl,language:preference}=await rpc.call('config',null);
-       if(live)setLanguage(resolveLanguage(preference,navigator.languages));
-       const u=new URL(viewerUrl);
-       if(u.protocol!=='https:')throw new Error('configure');
-       if(live){setUrl(new URL('/android.html',u).href);setError('');}
-     }catch{if(live)setError('configure');}
-   }
-   void load();const timer=setInterval(()=>void load(),5000);
-   return()=>{live=false;clearInterval(timer);};
- },[rpc]);
- useEffect(()=>{
-   const iframe=frame.current;if(!iframe||!url)return;
-   const origin=new URL(url).origin;
-   const media=window.matchMedia('(prefers-color-scheme: dark)');
-   const publish=()=>{
-     const style=getComputedStyle(iframe);
-     const scheme=style.colorScheme;
-     const mode=scheme==='dark'?'dark':scheme==='light'?'light':media.matches?'dark':'light';
-     const colors:Record<string,string>={};
-     for(const [key,token]of Object.entries(themeTokens)){
-       const value=style.getPropertyValue(token).trim();
-       if(value&&CSS.supports('color',value))colors[key]=value;
-     }
-     iframe.contentWindow?.postMessage({type:'bb-android-theme',mode,colors},origin);
-   };
-   const ready=(event:MessageEvent)=>{
-     if(event.source===iframe.contentWindow&&event.origin===origin&&event.data?.type==='bb-android-ready')publish();
-   };
-   const observer=new MutationObserver(publish);
-   // Palette classes/variables can live on the app root or a scoped panel ancestor.
-   for(let element:Element|null=iframe.parentElement;element;element=element.parentElement)
-     observer.observe(element,{attributes:true});
-   observer.observe(document.head,{childList:true,subtree:true,characterData:true,attributes:true});
-   iframe.addEventListener('load',publish);
-   document.addEventListener('load',publish,true);
-   window.addEventListener('message',ready);
-   media.addEventListener('change',publish);
-   publish();
-   return()=>{observer.disconnect();iframe.removeEventListener('load',publish);document.removeEventListener('load',publish,true);window.removeEventListener('message',ready);media.removeEventListener('change',publish);};
- },[url]);
- useEffect(()=>{
-   const iframe=frame.current;if(!iframe||!url)return;
-   const origin=new URL(url).origin;
-   const publish=()=>iframe.contentWindow?.postMessage({type:'bb-android-language',language},origin);
-   const ready=(event:MessageEvent)=>{if(event.source===iframe.contentWindow&&event.origin===origin&&event.data?.type==='bb-android-ready')publish();};
-   iframe.addEventListener('load',publish);window.addEventListener('message',ready);publish();
-   return()=>{iframe.removeEventListener('load',publish);window.removeEventListener('message',ready);};
- },[url,language]);
- useEffect(()=>{
-   const iframe=frame.current;if(!iframe||!url)return;
-   const origin=new URL(url).origin;let live=true;
-   const copy=async(event:MessageEvent)=>{
-     const data=event.data;
-     if(event.source!==iframe.contentWindow||event.origin!==origin||data?.type!=='bb-android-copy'||!Number.isSafeInteger(data.id)||data.id<1||typeof data.text!=='string'||new TextEncoder().encode(data.text).length>65536)return;
-     const ok=await experimental_copyToClipboard({text:data.text});
-     if(live)iframe.contentWindow?.postMessage({type:'bb-android-copy-result',id:data.id,ok},origin);
-   };
-   window.addEventListener('message',copy);
-   return()=>{live=false;window.removeEventListener('message',copy);};
- },[url]);
- if(!url)return <p role="status" style={{padding:16}}>{translate(language,error||'connecting')}</p>;
- return <iframe ref={frame} title="Android Emulator" src={url} style={{border:0,width:'100%',height:'100%',display:'block'}} allow="fullscreen" allowFullScreen/>;
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { definePluginApp, useRpc, experimental_copyToClipboard, experimental_saveFile, experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
+import type { HostState, ViewerMessage, rpcContract } from './contract';
+import { resolveLanguage, translate } from './i18n.js';
+import { keyMessage, textMessage } from './viewer/keys';
+import { parsePacket, VideoPlayer } from './viewer/video';
+import { styles } from './viewer/styles';
+
+type Rpc = ReturnType<typeof useRpc<typeof rpcContract>>;
+type Host = { id: string; name: string; online: boolean };
+type Link = 'idle' | 'connecting' | 'live' | 'lost';
+type Popover = 'host' | 'device' | 'input' | 'more' | 'clipboard' | null;
+
+const ERROR_KEYS = ['noSdk', 'noAdb', 'adbFailed', 'listFailed', 'unavailable', 'alreadyRunning', 'startFailed', 'unknownAvd',
+  'notEmulator', 'portBusy', 'chooseAddress', 'addressUnavailable'];
+/** Host errors carry an i18n key; anything else is shown as a generic failure. */
+const errorKey = (error: unknown) => ERROR_KEYS.find(key => String((error as Error)?.message ?? '').includes(key)) ?? 'commandFailed';
+const RECONNECT_MS = [1000, 2000, 5000, 10000];
+
+function Emulator() {
+  const rpc = useRpc<typeof rpcContract>();
+  const [language, setLanguage] = useState(() => resolveLanguage('auto', navigator.languages));
+  const t = useCallback((key: string, values?: Record<string, string>) => translate(language, key, values), [language]);
+  const [transport, setTransport] = useState<'bb' | 'network'>('bb');
+  const [hosts, setHosts] = useState<Host[]>([]);
+  const [hostId, setHostId] = useState<string | null>(null);
+  const [state, setState] = useState<HostState | null>(null);
+  const [serial, setSerial] = useState<string | null>(null);
+  const [link, setLink] = useState<Link>('idle');
+  const [status, setStatus] = useState('');
+  const [popover, setPopover] = useState<Popover>(null);
+  const [busy, setBusy] = useState(false);
+  const [deviceClipboard, setDeviceClipboard] = useState('');
+  const [avd, setAvd] = useState('');
+  const [text, setText] = useState('');
+  const [tick, setTick] = useState(0);
+  const failures = useRef(0);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const socket = useRef<WebSocket | null>(null);
+  const report = useCallback((error: unknown) => setStatus(t(errorKey(error))), [t]);
+
+  // Settings and host list.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const [config, list] = await Promise.all([rpc.call('config', null), rpc.call('hosts', null)]);
+        if (!live) return;
+        setLanguage(resolveLanguage(config.language, navigator.languages));
+        setTransport(config.transport);
+        setHosts(list);
+        setHostId(config.hostId && list.some(host => host.id === config.hostId) ? config.hostId : null);
+      } catch (error) { if (live) report(error); }
+    })();
+    return () => { live = false; };
+  }, [rpc, report]);
+
+  const refresh = useCallback(async () => {
+    if (!hostId) return;
+    const next = await rpc.call('state', { hostId });
+    setState(next);
+    setAvd(current => (next.avds.includes(current) ? current : next.avds[0] ?? ''));
+    setSerial(current => {
+      const ready = next.devices.filter(device => device.state === 'device').map(device => device.serial);
+      if (current && ready.includes(current)) return current;
+      return next.active && ready.includes(next.active) ? next.active : ready[0] ?? null;
+    });
+  }, [rpc, hostId]);
+
+  useEffect(() => {
+    if (!hostId) return;
+    setState(null);
+    refresh().catch(report);
+    const timer = setInterval(() => { if (!document.hidden) refresh().catch(report); }, 5000);
+    return () => clearInterval(timer);
+  }, [hostId, refresh, report]);
+
+  // Video and control socket for the selected device.
+  useEffect(() => {
+    const target = canvas.current;
+    if (!hostId || !serial || !target) { setLink('idle'); return; }
+    if (typeof VideoDecoder === 'undefined') { setStatus(t('noWebCodecs')); return; }
+    let live = true, retry: ReturnType<typeof setTimeout> | undefined;
+    const player = new VideoPlayer(target, () => { if (live) socket.current?.close(); }, () => { if (live) { failures.current = 0; setLink('live'); setStatus(''); } });
+    setLink('connecting');
+    void (async () => {
+      try {
+        const { url } = await rpc.call('open', { hostId, serial, origin: location.origin });
+        if (!live) return;
+        const ws = new WebSocket(url);
+        ws.binaryType = 'arraybuffer';
+        socket.current = ws;
+        ws.onmessage = event => {
+          if (typeof event.data !== 'string') { player.push(parsePacket(event.data)); return; }
+          const message = JSON.parse(event.data);
+          if (message.t === 'clipboard' && typeof message.text === 'string') setDeviceClipboard(message.text);
+          else if (message.t === 'error') setStatus(t('commandFailed'));
+        };
+        ws.onclose = () => {
+          if (!live) return;
+          setLink('lost');
+          setStatus(t(player.frames ? 'disconnected' : transport === 'network' ? 'networkBlocked' : 'bbBlocked'));
+          retry = setTimeout(() => setTick(value => value + 1), RECONNECT_MS[Math.min(failures.current++, RECONNECT_MS.length - 1)]);
+        };
+      } catch (error) {
+        if (!live) return;
+        setLink('lost');
+        report(error);
+      }
+    })();
+    return () => { live = false; clearTimeout(retry); socket.current?.close(); socket.current = null; player.close(); };
+  }, [rpc, hostId, serial, tick, transport, t, report]);
+
+  const send = useCallback((message: ViewerMessage | null) => {
+    if (message && socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(message));
+  }, []);
+
+  const point = (event: { clientX: number; clientY: number }) => {
+    const target = canvas.current!;
+    const rect = target.getBoundingClientRect();
+    return { x: Math.round((event.clientX - rect.left) / rect.width * target.width), y: Math.round((event.clientY - rect.top) / rect.height * target.height), w: target.width, h: target.height };
+  };
+  const touch = (action: 0 | 1 | 2) => (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!canvas.current?.width || (action === 2 && !event.buttons)) return;
+    if (action === 0) { event.currentTarget.setPointerCapture(event.pointerId); event.currentTarget.focus(); }
+    send({ t: 'touch', action, ...point(event) });
+  };
+
+  useEffect(() => {
+    const target = canvas.current;
+    if (!target) return;
+    const wheel = (event: WheelEvent) => {
+      if (!target.width) return;
+      event.preventDefault();
+      const clamp = (value: number) => Math.max(-16, Math.min(16, value));
+      send({ t: 'scroll', ...point(event), dx: clamp(-event.deltaX / 100), dy: clamp(-event.deltaY / 100) });
+    };
+    const keydown = (event: KeyboardEvent) => {
+      const message = keyMessage(event);
+      if (!message) return;
+      event.preventDefault();
+      send(message);
+    };
+    const paste = (event: ClipboardEvent) => { event.preventDefault(); send(textMessage(event.clipboardData?.getData('text/plain') ?? '')); };
+    const composition = (event: CompositionEvent) => send(textMessage(event.data));
+    target.addEventListener('wheel', wheel, { passive: false });
+    target.addEventListener('keydown', keydown);
+    target.addEventListener('paste', paste);
+    target.addEventListener('compositionend', composition);
+    return () => {
+      target.removeEventListener('wheel', wheel);
+      target.removeEventListener('keydown', keydown);
+      target.removeEventListener('paste', paste);
+      target.removeEventListener('compositionend', composition);
+    };
+  }, [send]);
+
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setPopover(null); };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, []);
+
+  async function chooseHost(id: string) {
+    setPopover(null);
+    setSerial(null);
+    setHostId(id);
+    await rpc.call('select', { hostId: id }).catch(report);
+  }
+
+  async function action(work: () => Promise<unknown>, done?: string) {
+    setBusy(true);
+    setPopover(null);
+    try { await work(); if (done) setStatus(t(done)); }
+    catch (error) { report(error); }
+    finally { setBusy(false); await refresh().catch(report); }
+  }
+
+  const startAvd = (name: string) => action(() => rpc.call('start', { hostId: hostId!, avd: name }), 'starting');
+  const stopDevice = () => {
+    if (!serial || !window.confirm(t('stopConfirm', { name: serial }))) return;
+    void action(() => rpc.call('stop', { hostId: hostId!, serial }), 'stopped');
+  };
+
+  function submitText(event: FormEvent) {
+    event.preventDefault();
+    if (!text) return;
+    send({ t: 'paste', text });
+    setText('');
+    setPopover(null);
+    setStatus(t('sent'));
+    canvas.current?.focus();
+  }
+
+  async function screenshot() {
+    const blob = await new Promise<Blob | null>(resolve => canvas.current?.toBlob(resolve, 'image/png') ?? resolve(null));
+    if (!blob) { setStatus(t('waitImage')); return; }
+    await experimental_saveFile({ fileName: `${serial}-${new Date().toISOString().replaceAll(':', '-')}.png`, blob });
+  }
+
+  async function copyClipboard() {
+    setStatus(t((await experimental_copyToClipboard({ text: deviceClipboard })) ? 'copied' : 'copyManual'));
+  }
+
+  const host = hosts.find(item => item.id === hostId);
+  const device = state?.devices.find(item => item.serial === serial);
+  const failed = state?.checks.filter(check => !check.ok) ?? [];
+  const toggle = (name: Exclude<Popover, null>) => setPopover(current => (current === name ? null : name));
+  const ready = Boolean(serial);
+
+  return (
+    <div className="bbae" onPointerDown={event => { if (!(event.target as Element).closest('.bbae-header')) setPopover(null); }}>
+      <style>{styles}</style>
+      <header className="bbae-header">
+        <button className="bbae-chip" aria-expanded={popover === 'host'} onClick={() => toggle('host')} title={t('chooseHost')}>
+          <Icon name="Server" aria-hidden />
+          <span className="bbae-name">{host?.name ?? t('chooseHost')}</span>
+        </button>
+        {hostId && (
+          <button className="bbae-chip" aria-expanded={popover === 'device'} onClick={() => toggle('device')} aria-label={device ? t('deviceNamed', { name: device.avd ?? device.serial }) : t('chooseDevice')}>
+            <span className={`bbae-dot ${link === 'live' ? 'online' : ''}`} />
+            <span className="bbae-name">{device ? device.avd ?? device.serial : t('none')}</span>
+            <Icon name="ChevronDown" aria-hidden />
+          </button>
+        )}
+        <span className="bbae-spacer" />
+        {ready && <>
+          <IconButton icon="Camera" label={t('screenshot')} onClick={() => void screenshot()} />
+          <IconButton icon="RotateCw" label={t('rotate')} onClick={() => send({ t: 'rotate' })} />
+          <IconButton icon="Keyboard" label={t('input')} expanded={popover === 'input'} onClick={() => toggle('input')} />
+        </>}
+        {hostId && <IconButton icon="Ellipsis" label={t('more')} expanded={popover === 'more' || popover === 'clipboard'} onClick={() => toggle('more')} />}
+
+        {popover === 'host' && (
+          <section className="bbae-popover bbae-menu bbae-left" aria-label={t('chooseHost')}>
+            {hosts.map(item => (
+              <button key={item.id} disabled={!item.online} aria-current={item.id === hostId} onClick={() => void chooseHost(item.id)}>
+                <span className={`bbae-dot ${item.online ? 'online' : ''}`} />{item.name}{!item.online && <span className="bbae-hint">{t('offline')}</span>}
+              </button>
+            ))}
+          </section>
+        )}
+        {popover === 'device' && state && (
+          <section className="bbae-popover bbae-left" aria-label={t('chooseDevice')}>
+            <label className="bbae-label" htmlFor="bbae-devices">{t('running')}</label>
+            <select id="bbae-devices" value={serial ?? ''} onChange={event => { setSerial(event.target.value || null); setPopover(null); }}>
+              {state.devices.length === 0 && <option value="">{t('noRunning')}</option>}
+              {state.devices.map(item => <option key={item.serial} value={item.serial} disabled={item.state !== 'device'}>{`${item.avd ?? item.serial} · ${item.serial}${item.state === 'device' ? '' : ' · ' + item.state}`}</option>)}
+            </select>
+            <label className="bbae-label" htmlFor="bbae-avds">{t('launch')}</label>
+            <div className="bbae-row">
+              <select id="bbae-avds" value={avd} onChange={event => setAvd(event.target.value)}>
+                {state.avds.length === 0 && <option value="">{t('noAvds')}</option>}
+                {state.avds.map(name => <option key={name}>{name}</option>)}
+              </select>
+              <button className="bbae-primary" disabled={busy || !avd} onClick={() => void startAvd(avd)}>{t('start')}</button>
+            </div>
+          </section>
+        )}
+        {popover === 'input' && (
+          <section className="bbae-popover" aria-label={t('input')}>
+            <form onSubmit={submitText}>
+              <label className="bbae-label" htmlFor="bbae-text">{t('textLabel')}</label>
+              <textarea id="bbae-text" rows={3} autoFocus value={text} placeholder={t('placeholder')} onChange={event => setText(event.target.value)}
+                onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) submitText(event); }} />
+              <div className="bbae-row">
+                <span className="bbae-hint">{t('shortcut')}</span><span className="bbae-spacer" />
+                <button type="button" onClick={() => setPopover(null)}>{t('cancel')}</button>
+                <button className="bbae-primary" type="submit" disabled={!text || link !== 'live'}>{t('send')}</button>
+              </div>
+            </form>
+          </section>
+        )}
+        {popover === 'more' && (
+          <div className="bbae-popover bbae-menu">
+            <button onClick={() => { setPopover(null); refresh().catch(report); }}>{t('refresh')}</button>
+            <button disabled={!ready} onClick={() => { setPopover(null); failures.current = 0; setTick(value => value + 1); }}>{t('reconnect')}</button>
+            <button disabled={!ready} onClick={() => setPopover('clipboard')}>{t('clipboard')}</button>
+            <button disabled={!serial?.startsWith('emulator-') || busy} onClick={stopDevice}>{t('stop')}</button>
+          </div>
+        )}
+        {popover === 'clipboard' && (
+          <section className="bbae-popover" aria-label={t('clipboard')}>
+            <label className="bbae-label" htmlFor="bbae-clipboard">{t('clipboardLabel')}</label>
+            <p className="bbae-hint">{t('clipboardHelp')}</p>
+            <textarea id="bbae-clipboard" rows={4} readOnly value={deviceClipboard} />
+            <div className="bbae-row"><span className="bbae-spacer" />
+              <button className="bbae-primary" disabled={!deviceClipboard} onClick={() => void copyClipboard()}>{t('copy')}</button>
+            </div>
+          </section>
+        )}
+      </header>
+
+      <main className="bbae-stage">
+        <canvas ref={canvas} tabIndex={0} hidden={!ready} aria-label={t('screen')} className="bbae-screen"
+          onPointerDown={touch(0)} onPointerMove={touch(2)} onPointerUp={touch(1)} onPointerCancel={touch(1)} />
+        {!ready && <Empty>
+          {!hostId ? <><h1>{t('chooseHost')}</h1><p>{t('chooseHostBody')}</p>
+            <button className="bbae-primary" onClick={() => toggle('host')}>{t('chooseHost')}</button></>
+          : !state ? <p>{t('connecting')}</p>
+          : failed.length > 0 ? <Checks state={state} t={t} />
+          : <><h1>{t('emptyTitle')}</h1><p>{t('emptyBody')}</p>
+            <button className="bbae-primary" disabled={busy || !state.avds.length} onClick={() => void startAvd(state.avds[0])}>
+              {state.avds.length ? t('launchNamed', { name: state.avds[0] }) : t('noAvds')}</button>
+            {state.avds.length > 1 && <button className="bbae-link" onClick={() => toggle('device')}>{t('other')}</button>}</>}
+        </Empty>}
+      </main>
+      {status && <p className="bbae-status" role="status" aria-live="polite">{status}</p>}
+      {ready && (
+        <nav className="bbae-nav" aria-label={t('nav')}>
+          <div>
+            <IconButton icon="Triangle" iconStyle={{ transform: 'rotate(-90deg)' }} label={t('back')} onClick={() => send({ t: 'key', key: 'back' })} />
+            <IconButton icon="Circle" label={t('home')} onClick={() => send({ t: 'key', key: 'home' })} />
+            <IconButton icon="Square" label={t('recent')} onClick={() => send({ t: 'key', key: 'recent' })} />
+          </div>
+        </nav>
+      )}
+    </div>
+  );
 }
-export default definePluginApp(app=>{
- app.slots.threadPanelAction({id:'emulator',title:'Android Emulator',icon:'Smartphone',layout:'flush',component:Emulator});
- app.slots.navPanel({id:'android',title:'Android Emulator',icon:'Smartphone',path:'android',component:Emulator});
+
+function IconButton(props: { icon: string; label: string; onClick: () => void; expanded?: boolean; iconStyle?: React.CSSProperties }) {
+  return (
+    <button className="bbae-icon" aria-label={props.label} title={props.label} aria-expanded={props.expanded} onClick={props.onClick}>
+      <Icon name={props.icon} style={props.iconStyle} aria-hidden />
+    </button>
+  );
+}
+
+function Empty({ children }: { children: ReactNode }) {
+  return <section className="bbae-empty"><div className="bbae-empty-icon"><Icon name="Smartphone" aria-hidden /></div>{children}</section>;
+}
+
+/** Environment readiness: the plugin checks the Android setup but never installs or changes it. */
+function Checks({ state, t }: { state: HostState; t: (key: string, values?: Record<string, string>) => string }) {
+  return (
+    <div className="bbae-checks">
+      <h1>{t('checksTitle')}</h1>
+      <ul>
+        {state.checks.map(check => (
+          <li key={check.id} className={check.ok ? 'ok' : 'fail'}>
+            <Icon name={check.ok ? 'CircleCheck' : 'CircleX'} aria-hidden />
+            <div><strong>{t(`check_${check.id}`)}</strong>{!check.ok && <p>{t(check.id === 'accel' ? `hint_accel_${state.platform === 'win32' ? 'win' : 'unix'}` : `hint_${check.id}`)}</p>}
+              {check.detail && <code>{check.detail}</code>}</div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default definePluginApp(app => {
+  app.slots.threadPanelAction({ id: 'emulator', title: 'Android Emulator', icon: 'Smartphone', layout: 'flush', component: Emulator });
+  app.slots.navPanel({ id: 'android', title: 'Android Emulator', icon: 'Smartphone', path: 'android', component: Emulator });
 });

@@ -1,145 +1,106 @@
-# Android Emulator для BB
+# Android Emulator for bb
 
-Панель работающего Android-эмулятора рядом с чатом BB: мышь/свайпы/клавиатура,
-кнопки «Назад», «Домой», «Недавние», свёрнутая форма отправки Unicode-текста,
-выбор работающего эмулятора и ручной запуск имеющегося AVD.
+Watch and control Android emulators that run on your bb hosts, right inside bb:
+live screen, touch, keyboard, Unicode paste, clipboard sync and system buttons.
+Agents get the same controls through `bb android-emulator`.
 
-В BB: правая панель треда → **+ → Android Emulator**. Также есть отдельная
-страница Android Emulator в навигации. Шапку и вкладки BB рисует сам хост.
-Внутри экрана нет повторного заголовка.
+## How it works
 
-## Требования и границы настройки
-
-Android-среда должна быть подготовлена заранее: SDK/ADB, Android Emulator,
-существующий AVD и работающее ускорение KVM для Linux-хоста. Плагин предназначен
-для подключения, трансляции экрана и управления готовым устройством.
-Он не устанавливает SDK и образы, не создаёт AVD и не настраивает гипервизор.
-Проверки готовности и понятные инструкции при отсутствии компонентов включены
-в план публикации; полноценный мастер проверок ещё предстоит реализовать.
-Выбор и ручной запуск существующих AVD остаются доступны.
-
-## Архитектура и ограничения
-
-BB server регистрирует UI и CLI и отправляет команды на настроенный
-HTTPS-адрес bridge через Tailscale. Он не запускает локальный ADB.
-Видео и пользовательские команды идут через приватный HTTPS Tailscale Serve
-к Linux bridge (Xvfb + scrcpy + x11vnc + noVNC/websockify).
-Устройство зрителя должно быть в той же Tailscale-сети.
-
-Один bridge обслуживает один выбранный экран: выбор общий для всех зрителей.
-Системные кнопки и текст направляются в выбранный serial. Вставка использует
-буфер выделенного Xvfb и scrcpy: предварительно выберите поле в Android.
-Текст не пишется в журнал bridge. Поле после успешной отправки очищается.
-Bridge слушает только loopback. Управляющие POST требуют точный Origin,
-нестандартный заголовок и ограничены по размеру; Origin задаётся переменной
-`ANDROID_VIEWER_ORIGIN`. Это защита от случайного cross-site запроса, а не
-самостоятельная аутентификация. Доступ определяется ACL Tailscale.
-
-Закрытие панели не останавливает AVD. Закрытие bridge останавливает только
-его scrcpy/Xvfb/VNC. Автозапуск bridge настраивается отдельно через пользовательский сервис systemd;
-сам плагин не устанавливает системные службы. Поддержка bridge в этой версии — Linux, Android SDK с KVM.
-
-## Установка
-
-В каталоге плагина:
-
-```sh
-npm install --include=dev
-npm run check
-bb plugin build
-bb plugin install . --yes
-bb plugin config android-emulator set viewerUrl https://MACHINE.tailNET.ts.net
+```mermaid
+flowchart LR
+  P[bb panel in the browser] -- RPC --> S[plugin server]
+  S -- host call --> H[host entry on the Android host]
+  H -- adb + scrcpy-server --> E[emulator]
+  P -- WebSocket: H.264 + input --> H
 ```
 
-Путь установки должен быть доступен **серверу BB**. Если SDK находится
-на другой машине, bridge запускается на ней, а плагин — на сервере BB.
+- The plugin server lists your bb hosts; you pick one in the panel. One device
+  stream is active per host.
+- The host entry runs inside the bb host worker. It checks the Android SDK,
+  lists AVDs and devices, starts an AVD headless and pushes the bundled
+  scrcpy-server 3.3.3 to the device.
+- The browser decodes H.264 with WebCodecs and sends touch, keys and text back
+  over the same WebSocket. Each connection needs a one-time token (60 s) and the
+  panel's exact Origin.
+- A session nobody watches for 2 minutes closes. The emulator keeps running
+  until you stop it.
 
-На Android-машине нужны `xvfb x11vnc novnc websockify xclip xdotool`, Android
-SDK и официальный scrcpy. Скопируйте `bridge/*` в рабочую папку bridge,
-положите туда каталог `scrcpy-linux-x86_64-v5.0.1` с официальным релизом,
-либо задайте путь `SCRCPY=/absolute/path/to/scrcpy`. Версия scrcpy 5.0.1 в
-этой сессии проверена по SHA256 релиза. SDK по умолчанию `~/Android/Sdk`,
-переопределяется `ANDROID_SDK_ROOT`.
+## Requirements
+
+On the Android host (Windows or Linux; macOS is untested):
+
+- bb host enrolled and online.
+- Android SDK with `platform-tools` and `emulator`, found through
+  `ANDROID_HOME`, `ANDROID_SDK_ROOT` or the default SDK location.
+- At least one AVD.
+- Hardware acceleration (`emulator -accel-check` passes): WHPX/AEHD on Windows,
+  KVM on Linux.
+
+The plugin only checks these. It does not install the SDK, system images or
+KVM, and does not create or change AVDs. The panel shows each failed check with
+a hint.
+
+In the browser: WebCodecs with H.264 (current Chromium, Firefox or Safari).
+
+## Connection
+
+Settings → Plugins → Android Emulator → Connection:
+
+| Mode | Path | Needs |
+| --- | --- | --- |
+| BB network (default) | `wss://…` through `bb connect` shared ports | bb opened at getbb.app |
+| LAN / VPN | `ws://ADDRESS:PORT` straight to the host | Browser reaches the host; Chromium asks for local network access from an HTTPS page |
+
+LAN / VPN uses plain `ws://` on purpose: it is meant for a trusted local or VPN
+network. Set **LAN / VPN address** when the host has more than one IPv4 address.
+**Viewer port** defaults to 6090.
+
+## Agent commands
+
+Commands target the host chosen in the panel unless `--host` is given.
+`--serial` defaults to the active device. Every command accepts `--json`.
 
 ```sh
-ANDROID_VIEWER_ORIGIN=https://MACHINE.tailNET.ts.net bash /path/to/bridge/start.sh
-sudo tailscale serve --bg --https=443 http://127.0.0.1:6087
+bb android-emulator hosts
+bb android-emulator list
+bb android-emulator start Pixel_6_API_34
+bb android-emulator key --key back|home|recent
+bb android-emulator paste 'Text for the focused field'
+bb android-emulator stop emulator-5554
 ```
 
-Перед настройкой Serve проверьте имеющиеся маршруты, чтобы не заменить другой
-сервис. Не включайте Funnel для этого экрана. Откройте
-`https://MACHINE.tailNET.ts.net/android.html`.
-AVD можно заранее запустить любым способом или выбрать в раскрытии «Запустить
-эмулятор». Дождитесь загрузки: список обновляется каждые 5 секунд.
+`stop` shuts the emulator down; unsaved state may be lost. Do not pass secrets
+through `paste`: arguments stay in shell history. Type them in the panel.
 
-## Управление агентом
+## Install
 
-`bb android-emulator list --json`, `select SERIAL`, `start AVD`,
-`key --key back|home|recent`, `paste 'текст'`. Команды доступны через
-автоматически подключаемый skill. Для нажатий по координатам, свайпов,
-скриншотов, дерева UI и логов используйте ADB на Android-машине.
-Не передавайте пароли в аргументах CLI — используйте форму панели.
+```sh
+bb plugin install git:https://github.com/nicolay-i/bb-plugin-android-emulator.git@host-entry-scrcpy
+```
 
-## Проверки
+## Development
 
-- `npm run check` — TypeScript-контракты и UI.
-- `bb plugin build` — server/app bundle.
-- На Linux с websockify: `python3 -m unittest discover -s bridge -p 'test_*.py'`.
-- Живая проверка: HTTPS/видео, системные кнопки, Unicode-вставка в Android.
+```sh
+npm ci
+npm run check   # TypeScript
+npm test        # unit tests + i18n dictionaries
+npm run build   # bb plugin build
+```
 
-## Темы
+On Windows, `bb plugin build` (bb 0.46.1) fails with
+`Cannot find module 'npm/package.json'`. Workaround:
 
-Встроенная панель получает текущие CSS-токены BB (`background`, `foreground`,
-`muted`, `border`, `popover`, `primary`, `accent` и их цвета текста) через
-проверенные сообщения между iframe и родительской панелью. Цвета обновляются
-при смене темы, включая пользовательские палитры, без перезапуска видео.
-Отдельно открытая страница использует системные CSS-цвета и `color-scheme`,
-следуя светлой/тёмной теме браузера/ОС. Цвета самого Android не изменяются.
+```sh
+NODE_PATH="$(npm root -g)" bb plugin build
+```
 
-## Язык
+Other scripts:
 
-В Settings → Plugins → Android Emulator → Language / Язык можно выбрать
-Auto / Browser или один из 12 языков: English, Русский, Deutsch, Français,
-Español, Português, Italiano, Polski, Українська, Türkçe, 日本語, 简体中文.
-Настройка общая для плагина; применяется к открытым панелям в течение 5 секунд,
-без перезапуска видео и Android. Auto выбирает первый поддерживаемый язык
-браузера; для неподдерживаемых языков используется английский.
-Отдельная страница выбирает язык браузера; можно передать `?lang=de`.
-Переведены подписи, подсказки доступности, статусы и сообщения ошибок панели.
-Язык самого Android и установленных приложений не меняется.
-Проверки словарей и подстановок: `npm run test:i18n`.
+- `npm run embed:scrcpy-server` — download, verify and embed scrcpy-server.
+- `npm run notices` — regenerate `THIRD_PARTY_NOTICES.md` after dependency
+  changes.
 
-## Копирование из Android
+## License
 
-Выделите текст внутри Android и нажмите системную команду копирования. В меню
-панели «Ещё» откройте «Буфер Android», затем нажмите «Копировать на компьютер».
-«Обновить» перечитывает буфер. Читается только текст до 64 КиБ, по явному
-нажатию, без фонового опроса. Передача использует clipboard sync scrcpy.
-В BB запись выполняется штатным clipboard API BB; отдельно открытая страница
-использует разрешение браузера. При отказе текст остаётся выделенным в поле
-для ручного копирования. Содержимое не сохраняется в настройках или журналах.
-Проверки браузерных вспомогательных модулей: `npm run test:browser-helpers`.
-
-## Восстановление после перезагрузки
-
-Tailscale Serve сохраняет маршрут, но процесс bridge нужно запускать отдельно.
-Для постоянной работы используйте `systemd --user`: ExecStart должен запускать
-`bridge/start.sh`, а ANDROID_VIEWER_ORIGIN — соответствовать HTTPS-адресу bridge.
-Рекомендуются Restart=always, RestartSec=5 и KillMode=control-group. Включите
-unit через `systemctl --user enable --now ИМЯ.service`; проверьте Linger, если
-сервис должен стартовать до входа пользователя. Перезапуск bridge не
-останавливает уже запущенный эмулятор.
-
-Панель переподключает видео после восстановления bridge и подключается к
-доступному устройству, если после старта bridge выбранного устройства ещё нет.
-AVD автоматически при загрузке компьютера не запускается: его можно запустить
-из панели или отдельно настроенным способом.
-
-## Выключение эмулятора
-
-В меню «Ещё» выберите «Выключить эмулятор» и подтвердите остановку.
-Команда для агента: `bb android-emulator stop SERIAL --json`. Останавливается
-только выбранный serial; если выбор успел измениться, запрос отклоняется.
-Используется штатная команда консоли Emulator `adb -s SERIAL emu kill`,
-без удаления AVD и пользовательских данных. Несохранённое состояние приложений
-может потеряться. Bridge остаётся работать, и готовый AVD можно запустить снова.
+MIT. Bundled third-party components and their licenses are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); scrcpy-server is Apache-2.0.

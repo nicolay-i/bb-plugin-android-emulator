@@ -4,35 +4,43 @@
   "type": "module",
   "engines": {
     "bb": ">=0.46",
-    "bbPluginSdk": ">=0.6.37"
+    "bbPluginSdk": ">=0.6.49"
   },
   "bb": {
     "name": "Android Emulator",
-    "description": "Интерактивный Android-эмулятор: выбор AVD, управление и отправка текста.",
+    "description": "See and control Android emulators on your bb hosts from a thread panel, with agent commands for the same device.",
     "branding": {
       "icon": "Smartphone"
     },
     "server": "./server.ts",
-    "app": "./app.tsx"
+    "app": "./app.tsx",
+    "host": "./host.ts"
   },
   "dependencies": {
+    "@yume-chan/adb": "2.6.4",
+    "@yume-chan/adb-scrcpy": "2.3.2",
+    "@yume-chan/adb-server-node-tcp": "2.5.2",
+    "@yume-chan/scrcpy": "2.3.0",
+    "@yume-chan/stream-extra": "2.6.1",
+    "ws": "8.22.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@get-bb/plugin-sdk": "0.6.37",
+    "@get-bb/plugin-sdk": "0.6.49",
+    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.0",
-    "@types/better-sqlite3": "^7.6.12",
-    "hono": "^4.11.9"
+    "@types/ws": "8.18.2",
+    "hono": "^4.11.9",
+    "typescript": "^5.7.0"
   },
   "scripts": {
     "build": "bb plugin build",
     "check": "tsc --noEmit",
-    "test": "python3 -m unittest discover -s bridge -p \"test_*.py\"",
-    "test:i18n": "node bridge/i18n.test.mjs",
-    "test:browser-helpers": "node bridge/text-input.test.mjs && node bridge/clipboard.test.mjs"
+    "test": "node --test test/*.test.ts && node i18n.test.mjs",
+    "embed:scrcpy-server": "node scripts/embed-scrcpy-server.mjs",
+    "notices": "node scripts/third-party-notices.mjs"
   },
   "repository": {
     "type": "git",
@@ -41,5 +49,6 @@
   "bugs": {
     "url": "https://github.com/nicolay-i/bb-plugin-android-emulator/issues"
   },
-  "homepage": "https://github.com/nicolay-i/bb-plugin-android-emulator#readme"
+  "homepage": "https://github.com/nicolay-i/bb-plugin-android-emulator#readme",
+  "license": "MIT"
 }

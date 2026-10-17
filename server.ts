@@ -1,33 +1,142 @@
 import { type BbPluginApi, defineCli, cliCommand } from '@get-bb/plugin-sdk';
-import { command, rpcContract } from './contract.js';
-import { languageOptions } from './bridge/i18n.js';
-export default async function plugin(bb:BbPluginApi){
-  const settings=bb.settings.define({
-    language:{type:'select',label:'Language / Язык',options:languageOptions,default:'Auto / Browser'},
-    viewerUrl:{type:'string',label:'Android bridge HTTPS URL (Tailscale)',default:''},
+import { hostContract, keyName, rpcContract, type HostState } from './contract.js';
+import { languageOptions } from './i18n.js';
+
+const TRANSPORTS = { 'BB network (bb connect)': 'bb', 'LAN / VPN': 'network' } as const;
+type TransportLabel = keyof typeof TRANSPORTS;
+const HOST_KEY = 'hostId';
+
+export default async function plugin(bb: BbPluginApi) {
+  const settings = bb.settings.define({
+    language: { type: 'select', label: 'Language', options: languageOptions, default: 'Auto / Browser' },
+    transport: {
+      type: 'select', label: 'Connection', options: Object.keys(TRANSPORTS), default: 'BB network (bb connect)',
+      description: 'BB network streams through bb connect and needs bb opened at getbb.app. LAN / VPN connects the browser straight to the Android host.',
+    },
+    networkAddress: {
+      type: 'string', label: 'LAN / VPN address of the Android host', default: '',
+      description: 'IPv4 address the viewer listens on. Leave empty when the host has exactly one LAN or VPN address.',
+    },
+    port: { type: 'number', label: 'Viewer port on the Android host', default: 6090 },
   });
-  bb.rpc.register(rpcContract,{config:async()=>{const {viewerUrl,language}=await settings.get();return {viewerUrl,language};}});
-  const json={type:'boolean' as const,description:'Вывести JSON'};
-  const control=async(input:unknown,signal:AbortSignal|undefined)=>{
-    const cfg=await settings.get();
-    if(!cfg.viewerUrl)throw new Error('Задайте viewerUrl в настройках Android Emulator.');
-    const url=new URL(cfg.viewerUrl);
-    if(url.protocol!=='https:')throw new Error('viewerUrl должен использовать HTTPS.');
-    const {action,...body}=command.parse(input);
-    const response=await fetch(new URL('/api/'+action,url),{
-      ...(action==='state'?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Android-Control':'1',Origin:url.origin},body:JSON.stringify(body)}),
-      redirect:'error',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(20000)]):AbortSignal.timeout(20000),
-    });
-    const result=await response.json();
-    if(!response.ok)throw new Error(result.error||`Bridge HTTP ${response.status}`);
-    return {exitCode:0,stdout:JSON.stringify(result)};
+  const host = bb.hosts.experimental_client({ contract: hostContract });
+  const config = async () => {
+    const values = await settings.get();
+    return { ...values, transport: TRANSPORTS[values.transport as TransportLabel] ?? 'bb' };
   };
-  bb.cli.register(defineCli({name:'android-emulator',summary:'Выбор и управление Android-эмулятором',commands:{
-    list:cliCommand({summary:'Работающие эмуляторы и доступные AVD',options:{json},run:(_,ctx)=>control({action:'state'},ctx.signal)}),
-    select:cliCommand({summary:'Подключить экран к эмулятору (общий для всех зрителей)',positionals:[{name:'serial',description:'Например emulator-5554',required:true}],options:{json},run:(input,ctx)=>control({action:'select',serial:input.positionals.serial},ctx.signal)}),
-    start:cliCommand({summary:'Запустить AVD вручную; остаётся работать после закрытия панели',positionals:[{name:'avd',description:'Имя AVD из list',required:true}],options:{json},run:(input,ctx)=>control({action:'start',avd:input.positionals.avd},ctx.signal)}),
-    stop:cliCommand({summary:'Выключить выбранный эмулятор; несохранённое состояние может потеряться',positionals:[{name:'serial',description:'Serial выбранного эмулятора из list',required:true}],options:{json},run:(input,ctx)=>control({action:'stop',serial:input.positionals.serial},ctx.signal)}),
-    key:cliCommand({summary:'Системная кнопка Android',options:{key:{type:'enum',values:['back','home','recent'],required:true,description:'Кнопка Android'},json},run:(input,ctx)=>control({action:'key',key:input.options.key},ctx.signal)}),
-    paste:cliCommand({summary:'Вставить текст в выбранное поле (не передавайте секреты через CLI)',positionals:[{name:'text',description:'Текст до 64 КБ',required:true}],options:{json},run:(input,ctx)=>control({action:'paste',text:input.positionals.text},ctx.signal)}),
-  }}));
+
+  async function hosts() {
+    const list = await bb.sdk.hosts.list();
+    return list.map(item => ({ id: item.id, name: item.name, online: item.status === 'connected' }));
+  }
+
+  async function viewerUrl(hostId: string, port: number, token: string, transport: 'bb' | 'network', address: string) {
+    if (transport === 'bb') {
+      bb.hosts.declareSharedPorts(hostId, [port]);
+      const tunnel = await bb.hosts.ensureSharedPortTunnel(hostId);
+      return `wss://${tunnel.label}--${port}.${tunnel.baseDomain}/ws?token=${token}`;
+    }
+    return `ws://${address}:${port}/ws?token=${token}`;
+  }
+
+  /** The configured address, or the host's only LAN/VPN address. */
+  function networkAddress(state: HostState, configured: string): string {
+    const candidates = state.addresses.map(item => item.address);
+    if (configured) {
+      if (!candidates.includes(configured)) throw new Error('addressUnavailable');
+      return configured;
+    }
+    if (candidates.length !== 1) throw new Error('chooseAddress');
+    return candidates[0];
+  }
+
+  bb.rpc.register(rpcContract, {
+    config: async () => {
+      const { language, transport } = await config();
+      return { language, transport, hostId: (await bb.storage.kv.get<string>(HOST_KEY)) ?? null };
+    },
+    hosts,
+    select: async ({ hostId }) => { await bb.storage.kv.set(HOST_KEY, hostId); return null; },
+    state: ({ hostId }) => host.call('state', null, { hostId }),
+    start: ({ hostId, avd }) => host.call('start', { avd }, { hostId }),
+    stop: ({ hostId, serial }) => host.call('stop', { serial }, { hostId }),
+    open: async ({ hostId, serial, origin }) => {
+      const { transport, networkAddress: configured, port } = await config();
+      const state = await host.call('state', null, { hostId });
+      const address = transport === 'network' ? networkAddress(state, configured.trim()) : 'loopback';
+      const opened = await host.call('open', { serial, listen: { bind: address, port, origin } }, { hostId });
+      return { url: await viewerUrl(hostId, opened.port, opened.token, transport, address) };
+    },
+    close: async ({ hostId }) => {
+      await host.call('close', null, { hostId });
+      bb.hosts.declareSharedPorts(hostId, []);
+      return null;
+    },
+  });
+
+  /** CLI target: `--host` (name or id) or the host last chosen in the panel. */
+  async function resolveHost(requested: string | undefined): Promise<string> {
+    const wanted = requested ?? (await bb.storage.kv.get<string>(HOST_KEY));
+    if (!wanted) throw new Error('Choose a host with --host or in the Android Emulator panel.');
+    const match = (await hosts()).find(item => item.id === wanted || item.name === wanted);
+    if (!match) throw new Error(`Unknown host: ${wanted}`);
+    return match.id;
+  }
+  async function activeSerial(hostId: string, requested: string | undefined): Promise<string> {
+    if (requested) return requested;
+    const state = await host.call('state', null, { hostId });
+    const ready = state.devices.filter(device => device.state === 'device');
+    const serial = state.active ?? (ready.length === 1 ? ready[0].serial : null);
+    if (!serial) throw new Error('Pass --serial: several or no devices are running.');
+    return serial;
+  }
+
+  const json = { type: 'boolean' as const, description: 'JSON output' };
+  const hostOption = { type: 'string' as const, description: 'bb host name or id (default: the host chosen in the panel)' };
+  const serialOption = { type: 'string' as const, description: 'Device serial, e.g. emulator-5554 (default: the active device)' };
+  const done = (value: unknown, asJson: boolean | undefined, text: string) => ({ exitCode: 0, stdout: asJson ? JSON.stringify(value) : text });
+
+  bb.cli.register(defineCli({ name: 'android-emulator', summary: 'Android emulators on bb hosts', commands: {
+    hosts: cliCommand({ summary: 'bb hosts available for Android', options: { json }, run: async input => {
+      const list = await hosts();
+      return done(list, input.options.json, list.map(item => `${item.name}\t${item.id}\t${item.online ? 'online' : 'offline'}`).join('\n'));
+    } }),
+    list: cliCommand({ summary: 'Environment checks, AVDs and running devices', options: { host: hostOption, json }, run: async (input, ctx) => {
+      const state = await host.call('state', null, { hostId: await resolveHost(input.options.host), signal: ctx.signal });
+      const text = [
+        ...state.checks.map(check => `${check.ok ? 'ok  ' : 'FAIL'} ${check.id}: ${check.detail}`),
+        `avds: ${state.avds.join(', ') || '-'}`,
+        ...state.devices.map(device => `device ${device.serial} ${device.state}${device.avd ? ` (${device.avd})` : ''}${device.serial === state.active ? ' [active]' : ''}`),
+      ].join('\n');
+      return done(state, input.options.json, text);
+    } }),
+    start: cliCommand({ summary: 'Start an AVD without a window; it keeps running after the panel closes',
+      positionals: [{ name: 'avd', description: 'AVD name from list', required: true }], options: { host: hostOption, json },
+      run: async (input, ctx) => {
+        const result = await host.call('start', { avd: input.positionals.avd }, { hostId: await resolveHost(input.options.host), signal: ctx.signal });
+        return done(result, input.options.json, `Starting ${input.positionals.avd}. Log: ${result.log}`);
+      } }),
+    stop: cliCommand({ summary: 'Shut down an emulator; unsaved state may be lost',
+      positionals: [{ name: 'serial', description: 'Serial from list', required: true }], options: { host: hostOption, json },
+      run: async (input, ctx) => {
+        await host.call('stop', { serial: input.positionals.serial }, { hostId: await resolveHost(input.options.host), signal: ctx.signal });
+        return done(null, input.options.json, `Stopped ${input.positionals.serial}`);
+      } }),
+    key: cliCommand({ summary: 'Press an Android system button',
+      options: { key: { type: 'enum', values: keyName.options, required: true, description: 'back, home or recent' }, serial: serialOption, host: hostOption, json },
+      run: async (input, ctx) => {
+        const hostId = await resolveHost(input.options.host);
+        const serial = await activeSerial(hostId, input.options.serial);
+        await host.call('key', { serial, key: input.options.key }, { hostId, signal: ctx.signal });
+        return done(null, input.options.json, `Pressed ${input.options.key} on ${serial}`);
+      } }),
+    paste: cliCommand({ summary: 'Paste text into the focused field (do not pass secrets through the CLI)',
+      positionals: [{ name: 'text', description: 'Text up to 64 KB', required: true }], options: { serial: serialOption, host: hostOption, json },
+      run: async (input, ctx) => {
+        const hostId = await resolveHost(input.options.host);
+        const serial = await activeSerial(hostId, input.options.serial);
+        await host.call('paste', { serial, text: input.positionals.text }, { hostId, signal: ctx.signal });
+        return done(null, input.options.json, `Pasted ${input.positionals.text.length} characters on ${serial}`);
+      } }),
+  } }));
 }

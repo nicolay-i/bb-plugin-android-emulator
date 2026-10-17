@@ -18,11 +18,16 @@
       ]
     },
     "noEmit": true,
-    "skipLibCheck": false
+    "skipLibCheck": false,
+    "allowImportingTsExtensions": true
   },
   "include": [
     "server.ts",
     "app.tsx",
-    "contract.ts"
+    "contract.ts",
+    "host.ts",
+    "host/**/*.ts",
+    "viewer/**/*.ts",
+    "test/**/*.ts"
   ]
 }

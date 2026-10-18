@@ -214,7 +214,7 @@ function Emulator() {
       <style>{styles}</style>
       <header className="bbae-header">
         <button className="bbae-chip" aria-expanded={popover === 'host'} onClick={() => toggle('host')} title={t('chooseHost')}>
-          <Icon name="Server" aria-hidden />
+          <Icon name="Laptop" aria-hidden />
           <span className="bbae-name">{host?.name ?? t('chooseHost')}</span>
         </button>
         {hostId && (
@@ -226,11 +226,11 @@ function Emulator() {
         )}
         <span className="bbae-spacer" />
         {ready && <>
-          <IconButton icon="Camera" label={t('screenshot')} onClick={() => void screenshot()} />
-          <IconButton icon="RotateCw" label={t('rotate')} onClick={() => send({ t: 'rotate' })} />
+          <IconButton icon="android-emulator/camera" label={t('screenshot')} onClick={() => void screenshot()} />
+          <IconButton icon="RotateCcw" label={t('rotate')} onClick={() => send({ t: 'rotate' })} />
           <IconButton icon="Keyboard" label={t('input')} expanded={popover === 'input'} onClick={() => toggle('input')} />
         </>}
-        {hostId && <IconButton icon="Ellipsis" label={t('more')} expanded={popover === 'more' || popover === 'clipboard'} onClick={() => toggle('more')} />}
+        {hostId && <IconButton icon="MoreHorizontal" label={t('more')} expanded={popover === 'more' || popover === 'clipboard'} onClick={() => toggle('more')} />}
 
         {popover === 'host' && (
           <section className="bbae-popover bbae-menu bbae-left" aria-label={t('chooseHost')}>
@@ -310,7 +310,7 @@ function Emulator() {
       {ready && (
         <nav className="bbae-nav" aria-label={t('nav')}>
           <div>
-            <IconButton icon="Triangle" iconStyle={{ transform: 'rotate(-90deg)' }} label={t('back')} onClick={() => send({ t: 'key', key: 'back' })} />
+            <IconButton icon="android-emulator/back" label={t('back')} onClick={() => send({ t: 'key', key: 'back' })} />
             <IconButton icon="Circle" label={t('home')} onClick={() => send({ t: 'key', key: 'home' })} />
             <IconButton icon="Square" label={t('recent')} onClick={() => send({ t: 'key', key: 'recent' })} />
           </div>
@@ -320,10 +320,10 @@ function Emulator() {
   );
 }
 
-function IconButton(props: { icon: string; label: string; onClick: () => void; expanded?: boolean; iconStyle?: React.CSSProperties }) {
+function IconButton(props: { icon: string; label: string; onClick: () => void; expanded?: boolean }) {
   return (
     <button className="bbae-icon" aria-label={props.label} title={props.label} aria-expanded={props.expanded} onClick={props.onClick}>
-      <Icon name={props.icon} style={props.iconStyle} aria-hidden />
+      <Icon name={props.icon} aria-hidden />
     </button>
   );
 }
@@ -350,7 +350,16 @@ function Checks({ state, t }: { state: HostState; t: (key: string, values?: Reco
   );
 }
 
+/** BB has no built-in camera or Android back glyph; both follow the host icon size and colour. */
+const glyph = (path: string) => ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d={path} />
+  </svg>
+);
+
 export default definePluginApp(app => {
+  app.experimental_icons.register({ name: 'android-emulator/camera', component: glyph('M4 8h3l2-3h6l2 3h3v11H4z M12 10.5a3 3 0 1 0 0 6 3 3 0 1 0 0-6z') });
+  app.experimental_icons.register({ name: 'android-emulator/back', component: glyph('M17 5v14L6 12z') });
   app.slots.threadPanelAction({ id: 'emulator', title: 'Android Emulator', icon: 'Smartphone', layout: 'flush', component: Emulator });
   app.slots.navPanel({ id: 'android', title: 'Android Emulator', icon: 'Smartphone', path: 'android', component: Emulator });
 });

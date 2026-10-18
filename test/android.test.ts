@@ -16,6 +16,11 @@ test('parseAccelCheck: usable WHPX among emulator noise', () => {
   assert.deepEqual(parseAccelCheck(output), { ok: true, detail: 'WHPX(10.0.26200) is installed and usable.' });
 });
 
+test('parseAccelCheck: usable WHPX drops the glued Hyper-V advice', () => {
+  const output = "accel:\r\n0\r\nPlease disable Hyper-V before using the Android Emulator.  Start a command prompt as Administrator, run 'bcdedit /set hypervisorlaunchtype off', reboot.WHPX (10.0.26200) is installed and usable.\r\naccel\r\n";
+  assert.deepEqual(parseAccelCheck(output), { ok: true, detail: 'WHPX (10.0.26200) is installed and usable.' });
+});
+
 test('parseAccelCheck: KVM missing', () => {
   const output = 'accel:\n9\n/dev/kvm is not found: VT disabled in BIOS or KVM kernel module not loaded\naccel\n';
   assert.deepEqual(parseAccelCheck(output), { ok: false, detail: '/dev/kvm is not found: VT disabled in BIOS or KVM kernel module not loaded' });

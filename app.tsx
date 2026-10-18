@@ -193,7 +193,8 @@ function Emulator() {
   }
 
   async function screenshot() {
-    const blob = await new Promise<Blob | null>(resolve => canvas.current?.toBlob(resolve, 'image/png') ?? resolve(null));
+    const target = canvas.current;
+    const blob = target && await new Promise<Blob | null>(resolve => target.toBlob(resolve, 'image/png'));
     if (!blob) { setStatus(t('waitImage')); return; }
     await experimental_saveFile({ fileName: `${serial}-${new Date().toISOString().replaceAll(':', '-')}.png`, blob });
   }

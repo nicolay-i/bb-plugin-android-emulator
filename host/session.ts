@@ -1,14 +1,15 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { AdbServerClient } from '@yume-chan/adb';
+import { AdbServerClient, type Adb } from '@yume-chan/adb';
 import { AdbServerNodeTcpConnector } from '@yume-chan/adb-server-node-tcp';
 import { AdbScrcpyClient, AdbScrcpyOptions3_3_3 } from '@yume-chan/adb-scrcpy';
-import { DefaultServerPath, type AndroidKeyCode, type AndroidKeyEventMeta } from '@yume-chan/scrcpy';
+import { type AndroidKeyCode, type AndroidKeyEventMeta } from '@yume-chan/scrcpy';
 import { ReadableStream, WritableStream } from '@yume-chan/stream-extra';
 import { viewerMessage, type Listen, type ViewerMessage } from '../contract.js';
 import { AndroidError, startAdbServer } from './android.js';
 import { SCRCPY_SERVER_BASE64, SCRCPY_SERVER_SHA256 } from './scrcpy-server.js';
+import { ViewerTokens } from './tokens.js';
 
 const KEYCODES = { back: 4, home: 3, recent: 187 } as const;
 const TOKEN_TTL_MS = 60_000;
@@ -43,7 +44,7 @@ export class DeviceSession {
 
   get viewerCount() { return this.viewers.size; }
 
-  private constructor(readonly serial: string, private client: Client, private onEnd: () => void) {}
+  private constructor(readonly serial: string, private adb: Adb, private client: Client, private onEnd: () => void) {}
 
   static async start(serial: string, onEnd: () => void): Promise<DeviceSession> {
     await startAdbServer();
@@ -51,12 +52,21 @@ export class DeviceSession {
     const device = (await adbClient.getDevices()).find(item => item.serial === serial && item.state === 'device');
     if (!device) throw new AndroidError('unavailable');
     const adb = await adbClient.createAdb(device);
-    const jar = serverJar();
-    await AdbScrcpyClient.pushServer(adb, new ReadableStream({ start(controller) { controller.enqueue(jar); controller.close(); } }));
-    const client = await AdbScrcpyClient.start(adb, DefaultServerPath, new AdbScrcpyOptions3_3_3({
-      audio: false, control: true, maxSize: 1280, maxFps: 30, videoBitRate: 4_000_000, clipboardAutosync: true,
-    }));
-    const session = new DeviceSession(serial, client, onEnd);
+    let client: Client;
+    try {
+      const jar = serverJar();
+      // A closing server deletes its own jar during cleanup, so each session pushes to its own path.
+      const scid = randomInt(0x80000000).toString(16);
+      const path = `/data/local/tmp/scrcpy-server-${scid}.jar`;
+      await AdbScrcpyClient.pushServer(adb, new ReadableStream({ start(controller) { controller.enqueue(jar); controller.close(); } }), path);
+      client = await AdbScrcpyClient.start(adb, path, new AdbScrcpyOptions3_3_3({
+        scid, audio: false, control: true, maxSize: 1280, maxFps: 30, videoBitRate: 4_000_000, clipboardAutosync: true,
+      }));
+    } catch (error) {
+      await adb.close().catch(() => {});
+      throw error;
+    }
+    const session = new DeviceSession(serial, adb, client, onEnd);
     void session.pump();
     return session;
   }
@@ -109,10 +119,15 @@ export class DeviceSession {
 
   attach(ws: WebSocket) {
     this.viewers.add(ws);
-    if (this.config) ws.send(this.config);
+    // Before the first config the stream starts with a keyframe anyway; scrcpy 3.3.3 crashes on a reset that early.
+    if (this.config) {
+      ws.send(this.config);
+      void this.controller.resetVideo().catch(() => {});
+    }
     if (this.clipboard) ws.send(JSON.stringify({ t: 'clipboard', text: this.clipboard }));
-    void this.controller.resetVideo().catch(() => {});
     ws.on('close', () => this.viewers.delete(ws));
+    // ws reports oversized or malformed frames as errors; drop only that viewer.
+    ws.on('error', () => ws.terminate());
     ws.on('message', (raw, binary) => {
       const parsed = !binary && raw.toString().length <= 300_000 ? viewerMessage.safeParse(safeJson(raw.toString())) : null;
       if (!parsed?.success) { ws.close(1008, 'invalid message'); return; }
@@ -153,6 +168,7 @@ export class DeviceSession {
     for (const ws of this.viewers) ws.close(4000, 'device session ended');
     this.viewers.clear();
     await this.client.close().catch(() => {});
+    await this.adb.close().catch(() => {});
     this.onEnd();
   }
 }
@@ -161,11 +177,9 @@ function safeJson(text: string): unknown {
   try { return JSON.parse(text); } catch { return null; }
 }
 
-const sameToken = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
-
 /** HTTP server that only upgrades `/ws?token=…` from the allowed origin; everything else is 404/403. */
 export class ViewerEndpoint {
-  private tokens = new Map<string, number>();
+  private tokens = new ViewerTokens(TOKEN_TTL_MS);
   private constructor(readonly listen: Listen, private server: Server, private wss: WebSocketServer) {}
 
   static async start(listen: Listen, session: () => DeviceSession | null): Promise<ViewerEndpoint> {
@@ -176,9 +190,10 @@ export class ViewerEndpoint {
     const wss = new WebSocketServer({ noServer: true, maxPayload: 300_000 });
     const endpoint = new ViewerEndpoint(listen, server, wss);
     server.on('upgrade', (req, socket, head) => {
-      const url = new URL(req.url ?? '/', 'http://viewer');
+      // URL.parse returns null for request targets like `//:1/` that the URL constructor throws on.
+      const url = URL.parse(req.url ?? '/', 'http://viewer');
       const current = session();
-      if (url.pathname !== '/ws' || req.headers.origin !== listen.origin || !endpoint.consume(url.searchParams.get('token') ?? '') || !current) {
+      if (url?.pathname !== '/ws' || req.headers.origin !== listen.origin || !endpoint.tokens.consume(url.searchParams.get('token') ?? '') || !current) {
         socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
         return;
       }
@@ -192,19 +207,7 @@ export class ViewerEndpoint {
   }
 
   issueToken(): string {
-    const now = Date.now();
-    for (const [token, expires] of this.tokens) if (expires < now) this.tokens.delete(token);
-    const token = randomBytes(24).toString('base64url');
-    this.tokens.set(token, now + TOKEN_TTL_MS);
-    return token;
-  }
-
-  private consume(candidate: string): boolean {
-    for (const [token, expires] of this.tokens) if (sameToken(token, candidate)) {
-      this.tokens.delete(token);
-      return expires >= Date.now();
-    }
-    return false;
+    return this.tokens.issue();
   }
 
   sameAs(listen: Listen) {

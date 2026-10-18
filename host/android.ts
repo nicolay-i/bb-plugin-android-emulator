@@ -42,7 +42,11 @@ export function parseAccelCheck(output: string): { ok: boolean; detail: string }
   const start = lines.indexOf('accel:');
   const end = lines.lastIndexOf('accel');
   if (start < 0 || end <= start + 1) return { ok: false, detail: lines.join(' ').slice(0, 300) || 'no output' };
-  return { ok: lines[start + 1] === '0', detail: lines.slice(start + 2, end).join(' ').slice(0, 300) };
+  const ok = lines[start + 1] === '0';
+  const detail = lines.slice(start + 2, end).join(' ');
+  // The emulator glues advisory sentences to the status without a space ("…reboot.WHPX … is usable.");
+  // a usable accelerator reports only its final sentence.
+  return { ok, detail: (ok ? detail.split(/(?<=\.)(?=[A-Z])/).at(-1)! : detail).slice(0, 300) };
 }
 
 /** `adb devices` lines: `<serial>\t<state>`. */

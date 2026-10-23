@@ -24,3 +24,7 @@ The plugin runs on the Android host inside the bb host worker. It talks to the e
 - A browser with WebCodecs H.264 support.
 
 The plugin does not install the SDK, system images or hypervisors, and does not create or change AVDs.
+
+## Preview status
+
+This is a preview release. It is tested on Windows hosts over LAN / VPN; the BB network connection and Linux hosts are not yet verified in daily use. Commands and settings can change before 1.0.

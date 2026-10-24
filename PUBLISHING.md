@@ -31,7 +31,7 @@ Windows и Linux; macOS позже. Плагин только проверяет
 3. Установка из Git на чистую машину: `bb plugin install git:…`.
 4. Локально перед релизом: `npm run check`, `npm test`, сборка — на Windows и Linux.
 5. Скриншоты: готовы в черновике; при желании заменить снятыми в обычном браузере (выше 577 px).
-6. Публичный репозиторий, тег `v0.1.0`, entry в marketplace с `PLUGIN_OVERVIEW.md`.
+6. Публичный репозиторий, тег `v0.1.1`, entry в marketplace с `PLUGIN_OVERVIEW.md`.
 
 ## Известные ограничения
 

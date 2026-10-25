@@ -1,5 +1,5 @@
 import { execFile, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, closeSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, closeSync, readFileSync } from 'node:fs';
 import { homedir, networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import type { HostState } from '../contract.js';
@@ -47,6 +47,14 @@ export function parseAccelCheck(output: string): { ok: boolean; detail: string }
   // The emulator glues advisory sentences to the status without a space ("…reboot.WHPX … is usable.");
   // a usable accelerator reports only its final sentence.
   return { ok, detail: (ok ? detail.split(/(?<=\.)(?=[A-Z])/).at(-1)! : detail).slice(0, 300) };
+}
+
+/** Why the emulator quit at start: its ERROR/FATAL lines, else the last lines it printed. */
+export function startFailure(log: string): string {
+  const errors = log.split(/\r?\n/).map(line => line.trim()).filter(line => /^(ERROR|FATAL|PANIC)\s*\|/.test(line))
+    .map(line => line.replace(/^\w+\s*\|\s*/, ''));
+  const lines = errors.length ? errors.slice(0, 2) : withoutEmulatorNoise(log).map(line => line.trim()).slice(-2);
+  return lines.join(' ').slice(0, 300);
 }
 
 /** `adb devices` lines: `<serial>\t<state>`. */
@@ -127,12 +135,13 @@ export async function start(avd: string, logDir: string): Promise<{ log: string 
   const child = spawn(emulator, ['-avd', avd, '-no-window', '-no-audio', '-no-boot-anim'],
     { detached: true, stdio: ['ignore', fd, fd], windowsHide: true });
   closeSync(fd);
-  const exited = await new Promise<boolean>(resolve => {
-    const timer = setTimeout(() => resolve(false), 3000);
-    child.once('exit', () => { clearTimeout(timer); resolve(true); });
-    child.once('error', () => { clearTimeout(timer); resolve(true); });
+  // null while the emulator keeps running; otherwise why it stopped.
+  const failure = await new Promise<string | null>(resolve => {
+    const timer = setTimeout(() => resolve(null), 3000);
+    child.once('exit', () => { clearTimeout(timer); resolve(startFailure(readFileSync(log, 'utf8'))); });
+    child.once('error', error => { clearTimeout(timer); resolve(error.message); });
   });
-  if (exited) throw new AndroidError('startFailed');
+  if (failure !== null) throw new AndroidError(failure ? `startFailed: ${failure}` : 'startFailed');
   child.unref();
   return { log };
 }

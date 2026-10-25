@@ -25,9 +25,10 @@ assert.equal(translate('__proto__','send'),'Send');
 assert.equal(translate('en','__proto__'),'__proto__');
 const {readFileSync}=await import('node:fs');
 const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
-const app=read('./app.tsx');
+// The panel's strings and the host error keys it maps (contract.ts).
+const app=read('./app.tsx')+read('./contract.ts');
 // Host and server errors carry i18n keys that the panel translates.
-const hostErrors=[...['./host/android.ts','./host/session.ts','./server.ts'].map(read).join('\n').matchAll(/Error\('(\w+)'\)/g)].map(m=>m[1]);
+const hostErrors=[...['./host/android.ts','./host/session.ts','./server.ts','./contract.ts'].map(read).join('\n').matchAll(/Error\('(\w+)'\)/g)].map(m=>m[1]);
 const checks=['sdk','adb','emulator','accel','avds'];
 const generated=[...checks.map(id=>`check_${id}`),...checks.filter(id=>id!=='accel').map(id=>`hint_${id}`),'hint_accel_win','hint_accel_unix'];
 const used=[...app.matchAll(/\bt\('(\w+)'/g)].map(m=>m[1]);

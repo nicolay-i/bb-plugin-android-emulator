@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { definePluginApp, useRpc, experimental_copyToClipboard, experimental_saveFile, experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
-import type { HostState, ViewerMessage, rpcContract } from './contract';
+import { hostError, type HostState, type ViewerMessage, type rpcContract } from './contract';
 import { resolveLanguage, translate } from './i18n.js';
 import { keyMessage, textMessage } from './viewer/keys';
 import { parsePacket, VideoPlayer } from './viewer/video';
@@ -11,10 +11,6 @@ type Host = { id: string; name: string; online: boolean };
 type Link = 'idle' | 'connecting' | 'live' | 'lost';
 type Popover = 'host' | 'device' | 'input' | 'more' | 'clipboard' | null;
 
-const ERROR_KEYS = ['noSdk', 'noAdb', 'adbFailed', 'listFailed', 'unavailable', 'alreadyRunning', 'startFailed', 'unknownAvd',
-  'notEmulator', 'portBusy', 'chooseAddress', 'addressUnavailable'];
-/** Host errors carry an i18n key; anything else is shown as a generic failure. */
-const errorKey = (error: unknown) => ERROR_KEYS.find(key => String((error as Error)?.message ?? '').includes(key)) ?? 'commandFailed';
 const RECONNECT_MS = [1000, 2000, 5000, 10000];
 
 function Emulator() {
@@ -37,7 +33,10 @@ function Emulator() {
   const failures = useRef(0);
   const canvas = useRef<HTMLCanvasElement>(null);
   const socket = useRef<WebSocket | null>(null);
-  const report = useCallback((error: unknown) => setStatus(t(errorKey(error))), [t]);
+  const report = useCallback((error: unknown) => {
+    const { key, detail } = hostError(String((error as Error)?.message ?? ''));
+    setStatus(detail ? `${t(key)} ${detail}` : t(key));
+  }, [t]);
 
   // Settings and host list.
   useEffect(() => {

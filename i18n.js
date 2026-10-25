@@ -87,8 +87,7 @@ export const messages = {
     "adbFailed": "The adb server did not start.",
     "notEmulator": "Only emulators can be turned off here.",
     "portBusy": "The viewer port is busy on the Android host. Change the port in settings.",
-    "chooseAddress": "The Android host has several LAN/VPN addresses. Set one in settings.",
-    "addressUnavailable": "The LAN/VPN address from settings does not belong to the Android host."
+    "chooseAddress": "The Android host has several LAN/VPN addresses. Set one in settings."
   },
   "ru": {
     "connecting": "Подключение…",
@@ -162,8 +161,7 @@ export const messages = {
     "adbFailed": "Сервер adb не запустился.",
     "notEmulator": "Отсюда можно выключать только эмуляторы.",
     "portBusy": "Порт просмотра на Android-хосте занят. Смените порт в настройках.",
-    "chooseAddress": "У Android-хоста несколько адресов LAN/VPN. Укажите один в настройках.",
-    "addressUnavailable": "Адрес LAN/VPN из настроек не принадлежит Android-хосту."
+    "chooseAddress": "У Android-хоста несколько адресов LAN/VPN. Укажите один в настройках."
   },
   "de": {
     "connecting": "Verbindung wird hergestellt…",
@@ -237,8 +235,7 @@ export const messages = {
     "adbFailed": "Der adb-Server wurde nicht gestartet.",
     "notEmulator": "Hier können nur Emulatoren ausgeschaltet werden.",
     "portBusy": "Der Anzeige-Port auf dem Android-Host ist belegt. Ändern Sie den Port in den Einstellungen.",
-    "chooseAddress": "Der Android-Host hat mehrere LAN/VPN-Adressen. Legen Sie eine in den Einstellungen fest.",
-    "addressUnavailable": "Die LAN/VPN-Adresse aus den Einstellungen gehört nicht zum Android-Host."
+    "chooseAddress": "Der Android-Host hat mehrere LAN/VPN-Adressen. Legen Sie eine in den Einstellungen fest."
   },
   "fr": {
     "connecting": "Connexion…",
@@ -312,8 +309,7 @@ export const messages = {
     "adbFailed": "Le serveur adb n’a pas démarré.",
     "notEmulator": "Seuls les émulateurs peuvent être éteints ici.",
     "portBusy": "Le port d’affichage est occupé sur l’hôte Android. Changez le port dans les paramètres.",
-    "chooseAddress": "L’hôte Android a plusieurs adresses LAN/VPN. Indiquez-en une dans les paramètres.",
-    "addressUnavailable": "L’adresse LAN/VPN des paramètres n’appartient pas à l’hôte Android."
+    "chooseAddress": "L’hôte Android a plusieurs adresses LAN/VPN. Indiquez-en une dans les paramètres."
   },
   "es": {
     "connecting": "Conectando…",
@@ -387,8 +383,7 @@ export const messages = {
     "adbFailed": "El servidor adb no se inició.",
     "notEmulator": "Aquí solo se pueden apagar emuladores.",
     "portBusy": "El puerto del visor está ocupado en el host Android. Cambia el puerto en la configuración.",
-    "chooseAddress": "El host Android tiene varias direcciones LAN/VPN. Indica una en la configuración.",
-    "addressUnavailable": "La dirección LAN/VPN de la configuración no pertenece al host Android."
+    "chooseAddress": "El host Android tiene varias direcciones LAN/VPN. Indica una en la configuración."
   },
   "pt": {
     "connecting": "A ligar…",
@@ -462,8 +457,7 @@ export const messages = {
     "adbFailed": "O servidor adb não iniciou.",
     "notEmulator": "Aqui só é possível desligar emuladores.",
     "portBusy": "A porta do visualizador está ocupada no host Android. Altere a porta nas configurações.",
-    "chooseAddress": "O host Android tem vários endereços LAN/VPN. Defina um nas configurações.",
-    "addressUnavailable": "O endereço LAN/VPN das configurações não pertence ao host Android."
+    "chooseAddress": "O host Android tem vários endereços LAN/VPN. Defina um nas configurações."
   },
   "it": {
     "connecting": "Connessione…",
@@ -537,8 +531,7 @@ export const messages = {
     "adbFailed": "Il server adb non si è avviato.",
     "notEmulator": "Qui si possono spegnere solo gli emulatori.",
     "portBusy": "La porta del visualizzatore è occupata sull’host Android. Cambia la porta nelle impostazioni.",
-    "chooseAddress": "L’host Android ha più indirizzi LAN/VPN. Impostane uno nelle impostazioni.",
-    "addressUnavailable": "L’indirizzo LAN/VPN delle impostazioni non appartiene all’host Android."
+    "chooseAddress": "L’host Android ha più indirizzi LAN/VPN. Impostane uno nelle impostazioni."
   },
   "pl": {
     "connecting": "Łączenie…",
@@ -612,8 +605,7 @@ export const messages = {
     "adbFailed": "Serwer adb się nie uruchomił.",
     "notEmulator": "Tutaj można wyłączać tylko emulatory.",
     "portBusy": "Port podglądu na hoście Android jest zajęty. Zmień port w ustawieniach.",
-    "chooseAddress": "Host Android ma kilka adresów LAN/VPN. Wskaż jeden w ustawieniach.",
-    "addressUnavailable": "Adres LAN/VPN z ustawień nie należy do hosta Android."
+    "chooseAddress": "Host Android ma kilka adresów LAN/VPN. Wskaż jeden w ustawieniach."
   },
   "uk": {
     "connecting": "Підключення…",
@@ -687,8 +679,7 @@ export const messages = {
     "adbFailed": "Сервер adb не запустився.",
     "notEmulator": "Звідси можна вимикати лише емулятори.",
     "portBusy": "Порт перегляду на Android-хості зайнятий. Змініть порт у налаштуваннях.",
-    "chooseAddress": "Android-хост має кілька адрес LAN/VPN. Вкажіть одну в налаштуваннях.",
-    "addressUnavailable": "Адреса LAN/VPN з налаштувань не належить Android-хосту."
+    "chooseAddress": "Android-хост має кілька адрес LAN/VPN. Вкажіть одну в налаштуваннях."
   },
   "tr": {
     "connecting": "Bağlanıyor…",
@@ -762,8 +753,7 @@ export const messages = {
     "adbFailed": "adb sunucusu başlamadı.",
     "notEmulator": "Burada yalnızca emülatörler kapatılabilir.",
     "portBusy": "Android ana makinesinde görüntüleyici bağlantı noktası meşgul. Ayarlardan bağlantı noktasını değiştirin.",
-    "chooseAddress": "Android ana makinesinin birden çok LAN/VPN adresi var. Ayarlarda birini belirtin.",
-    "addressUnavailable": "Ayarlardaki LAN/VPN adresi Android ana makinesine ait değil."
+    "chooseAddress": "Android ana makinesinin birden çok LAN/VPN adresi var. Ayarlarda birini belirtin."
   },
   "ja": {
     "connecting": "接続中…",
@@ -837,8 +827,7 @@ export const messages = {
     "adbFailed": "adb サーバーが起動しませんでした。",
     "notEmulator": "ここで電源を切れるのはエミュレーターのみです。",
     "portBusy": "Android ホストの表示用ポートが使用中です。設定でポートを変更してください。",
-    "chooseAddress": "Android ホストに複数の LAN/VPN アドレスがあります。設定で 1 つ指定してください。",
-    "addressUnavailable": "設定の LAN/VPN アドレスは Android ホストのものではありません。"
+    "chooseAddress": "Android ホストに複数の LAN/VPN アドレスがあります。設定で 1 つ指定してください。"
   },
   "zh": {
     "connecting": "正在连接…",
@@ -912,8 +901,7 @@ export const messages = {
     "adbFailed": "adb 服务器未能启动。",
     "notEmulator": "此处只能关闭模拟器。",
     "portBusy": "Android 主机上的查看端口已被占用。请在设置中更改端口。",
-    "chooseAddress": "Android 主机有多个 LAN/VPN 地址。请在设置中指定一个。",
-    "addressUnavailable": "设置中的 LAN/VPN 地址不属于该 Android 主机。"
+    "chooseAddress": "Android 主机有多个 LAN/VPN 地址。请在设置中指定一个。"
   }
 };
 

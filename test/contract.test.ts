@@ -11,7 +11,7 @@ test('viewerAddress takes the configured address this host owns', () => {
 
 test('viewerAddress falls back to the only address and refuses to guess among several', () => {
   assert.equal(viewerAddress([addresses[0]], '100.116.45.50'), '192.168.1.5');
-  assert.throws(() => viewerAddress(addresses, ''), /chooseAddress/);
+  assert.throws(() => viewerAddress(addresses, ''), /^Error: chooseAddress: 192.168.1.5, 100.79.148.99$/);
   assert.throws(() => viewerAddress(addresses, '192.168.1.5,100.79.148.99'), /chooseAddress/);
 });
 

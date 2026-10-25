@@ -30,7 +30,7 @@ export function viewerAddress(addresses: HostState['addresses'], configured: str
   const listed = configured.split(/[\s,]+/).filter(address => candidates.includes(address));
   if (listed.length === 1) return listed[0];
   if (listed.length === 0 && candidates.length === 1) return candidates[0];
-  throw new Error('chooseAddress');
+  throw new Error(`chooseAddress: ${candidates.join(', ')}`);
 }
 
 /** Where the viewer endpoint on the Android host listens and which page may use it. */

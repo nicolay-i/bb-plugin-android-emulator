@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { hostError, viewerAddress } from '../contract.ts';
+import { viewerAddress } from '../contract.ts';
+import { hostError } from '../errors.ts';
 
 const addresses = [{ address: '192.168.1.5', kind: 'lan' as const }, { address: '100.79.148.99', kind: 'vpn' as const }];
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { definePluginApp, useRpc, experimental_copyToClipboard, experimental_saveFile, experimental_Icon as Icon } from '@get-bb/plugin-sdk/app';
-import { hostError, type HostState, type ViewerMessage, type rpcContract } from './contract';
+import type { HostState, ViewerMessage, rpcContract } from './contract';
+import { hostError } from './errors';
 import { resolveLanguage, translate } from './i18n.js';
 import { keyMessage, textMessage } from './viewer/keys';
 import { parsePacket, VideoPlayer } from './viewer/video';

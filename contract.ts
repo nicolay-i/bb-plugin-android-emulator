@@ -21,6 +21,18 @@ export const hostState = z.object({
 }).strict();
 export type HostState = z.infer<typeof hostState>;
 
+/**
+ * The LAN/VPN address the viewer listens on: the one configured address (comma-separated list, one per host)
+ * that belongs to this host, or the host's only address when none of the configured ones does.
+ */
+export function viewerAddress(addresses: HostState['addresses'], configured: string): string {
+  const candidates = addresses.map(item => item.address);
+  const listed = configured.split(/[\s,]+/).filter(address => candidates.includes(address));
+  if (listed.length === 1) return listed[0];
+  if (listed.length === 0 && candidates.length === 1) return candidates[0];
+  throw new Error('chooseAddress');
+}
+
 /** Where the viewer endpoint on the Android host listens and which page may use it. */
 export const listen = z.object({
   bind: z.union([z.literal('loopback'), z.ipv4()]),

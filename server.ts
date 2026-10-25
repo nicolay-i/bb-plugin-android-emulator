@@ -1,5 +1,5 @@
 import { type BbPluginApi, defineCli, cliCommand } from '@get-bb/plugin-sdk';
-import { hostContract, keyName, rpcContract, type HostState } from './contract.js';
+import { hostContract, keyName, rpcContract, viewerAddress } from './contract.js';
 import { languageOptions } from './i18n.js';
 
 const TRANSPORTS = { 'BB network (bb connect)': 'bb', 'LAN / VPN': 'network' } as const;
@@ -14,8 +14,8 @@ export default async function plugin(bb: BbPluginApi) {
       description: 'BB network streams through bb connect and needs bb opened at getbb.app. LAN / VPN connects the browser straight to the Android host.',
     },
     networkAddress: {
-      type: 'string', label: 'LAN / VPN address of the Android host', default: '',
-      description: 'IPv4 address the viewer listens on. Leave empty when the host has exactly one LAN or VPN address.',
+      type: 'string', label: 'LAN / VPN addresses of Android hosts', default: '',
+      description: 'IPv4 addresses the viewer listens on, comma-separated, one per Android host; each host uses the one it owns. A host with exactly one LAN or VPN address needs none.',
     },
     port: { type: 'number', label: 'Viewer port on the Android host', default: 6090 },
   });
@@ -39,17 +39,6 @@ export default async function plugin(bb: BbPluginApi) {
     return `ws://${address}:${port}/ws?token=${token}`;
   }
 
-  /** The configured address, or the host's only LAN/VPN address. */
-  function networkAddress(state: HostState, configured: string): string {
-    const candidates = state.addresses.map(item => item.address);
-    if (configured) {
-      if (!candidates.includes(configured)) throw new Error('addressUnavailable');
-      return configured;
-    }
-    if (candidates.length !== 1) throw new Error('chooseAddress');
-    return candidates[0];
-  }
-
   bb.rpc.register(rpcContract, {
     config: async () => {
       const { language, transport } = await config();
@@ -63,7 +52,7 @@ export default async function plugin(bb: BbPluginApi) {
     open: async ({ hostId, serial, origin }) => {
       const { transport, networkAddress: configured, port } = await config();
       const state = await host.call('state', null, { hostId });
-      const address = transport === 'network' ? networkAddress(state, configured.trim()) : 'loopback';
+      const address = transport === 'network' ? viewerAddress(state.addresses, configured) : 'loopback';
       const opened = await host.call('open', { serial, listen: { bind: address, port, origin } }, { hostId });
       return { url: await viewerUrl(hostId, opened.port, opened.token, transport, address) };
     },

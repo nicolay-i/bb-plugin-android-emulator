@@ -52,7 +52,8 @@ Settings → Plugins → Android Emulator → Connection:
 | LAN / VPN | `ws://ADDRESS:PORT` straight to the host | Browser reaches the host; Chromium asks for local network access from an HTTPS page |
 
 LAN / VPN uses plain `ws://` on purpose: it is meant for a trusted local or VPN
-network. Set **LAN / VPN address** when the host has more than one IPv4 address.
+network. List one address per host in **LAN / VPN addresses of Android hosts**
+(comma-separated) when a host has more than one IPv4 address; each host uses the one it owns.
 **Viewer port** defaults to 6090.
 
 ## Agent commands

@@ -24,6 +24,8 @@ function Emulator() {
   const [state, setState] = useState<HostState | null>(null);
   const [serial, setSerial] = useState<string | null>(null);
   const [link, setLink] = useState<Link>('idle');
+  // The device has shown a frame; until then the screen stays hidden instead of an empty black frame.
+  const [seen, setSeen] = useState(false);
   const [status, setStatus] = useState('');
   const [popover, setPopover] = useState<Popover>(null);
   const [busy, setBusy] = useState(false);
@@ -75,13 +77,15 @@ function Emulator() {
     return () => clearInterval(timer);
   }, [hostId, refresh, report]);
 
+  useEffect(() => setSeen(false), [hostId, serial]);
+
   // Video and control socket for the selected device.
   useEffect(() => {
     const target = canvas.current;
     if (!hostId || !serial || !target) { setLink('idle'); return; }
     if (typeof VideoDecoder === 'undefined') { setStatus(t('noWebCodecs')); return; }
     let live = true, retry: ReturnType<typeof setTimeout> | undefined;
-    const player = new VideoPlayer(target, () => { if (live) socket.current?.close(); }, () => { if (live) { failures.current = 0; setLink('live'); setStatus(''); } });
+    const player = new VideoPlayer(target, () => { if (live) socket.current?.close(); }, () => { if (live) { failures.current = 0; setLink('live'); setSeen(true); setStatus(''); } });
     setLink('connecting');
     void (async () => {
       try {
@@ -293,7 +297,7 @@ function Emulator() {
       </header>
 
       <main className="bbae-stage">
-        <canvas ref={canvas} tabIndex={0} hidden={!ready} aria-label={t('screen')} className="bbae-screen"
+        <canvas ref={canvas} tabIndex={0} hidden={!ready || !seen} aria-label={t('screen')} className="bbae-screen"
           onPointerDown={touch(0)} onPointerMove={touch(2)} onPointerUp={touch(1)} onPointerCancel={touch(1)} />
         {!ready && <Empty>
           {!hostId ? <><h1>{t('chooseHost')}</h1><p>{t('chooseHostBody')}</p>
@@ -305,6 +309,7 @@ function Emulator() {
               {state.avds.length ? t('launchNamed', { name: state.avds[0] }) : t('noAvds')}</button>
             {state.avds.length > 1 && <button className="bbae-link" onClick={() => toggle('device')}>{t('other')}</button>}</>}
         </Empty>}
+        {ready && !seen && <Empty>{link !== 'lost' && <p>{t('connecting')}</p>}</Empty>}
       </main>
       {status && <p className="bbae-status" role="status" aria-live="polite">{status}</p>}
       {ready && (

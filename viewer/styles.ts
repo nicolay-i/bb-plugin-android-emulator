@@ -17,7 +17,12 @@ export const styles = `
 .bbae-dot{width:8px;height:8px;border-radius:50%;background:#a0a3a8;flex:none}
 .bbae-dot.online{background:#2da44e}
 .bbae-popover{position:absolute;top:52px;right:12px;width:min(366px,calc(100% - 24px));padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--popover);color:var(--popover-foreground);box-shadow:0 12px 32px #14141e29;z-index:3;display:flex;flex-direction:column;gap:10px}
-.bbae-left{left:12px;right:auto}
+.bbae-popover{transform-origin:top right;animation:bbae-pop .16s cubic-bezier(.2,.9,.3,1)}
+.bbae-left{left:12px;right:auto;transform-origin:top left}
+@keyframes bbae-pop{from{opacity:0;transform:translateY(-6px) scale(.97)}}
+.bbae-chip span+svg{transition:transform .16s}
+.bbae-chip[aria-expanded=true] span+svg{transform:rotate(180deg)}
+@media (prefers-reduced-motion:reduce){.bbae-popover{animation:none}.bbae-chip span+svg{transition:none}}
 .bbae-menu{width:240px;padding:6px;gap:0}
 .bbae-menu button{justify-content:flex-start;width:100%}
 .bbae-menu button[aria-current=true]{font-weight:600}

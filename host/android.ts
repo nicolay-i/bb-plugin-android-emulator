@@ -49,12 +49,12 @@ export function parseAccelCheck(output: string): { ok: boolean; detail: string }
   return { ok, detail: (ok ? detail.split(/(?<=\.)(?=[A-Z])/).at(-1)! : detail).slice(0, 300) };
 }
 
-/** Why the emulator quit at start: its ERROR/FATAL lines, else the last lines it printed. */
+/** Why the emulator quit at start: its ERROR/FATAL lines, else the last lines it printed, without level prefixes. */
 export function startFailure(log: string): string {
-  const errors = log.split(/\r?\n/).map(line => line.trim()).filter(line => /^(ERROR|FATAL|PANIC)\s*\|/.test(line))
-    .map(line => line.replace(/^\w+\s*\|\s*/, ''));
-  const lines = errors.length ? errors.slice(0, 2) : withoutEmulatorNoise(log).map(line => line.trim()).slice(-2);
-  return lines.join(' ').slice(0, 300);
+  const lines = log.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const errors = lines.filter(line => /^(ERROR|FATAL|PANIC)\s*\|/.test(line));
+  const picked = errors.length ? errors.slice(0, 2) : lines.slice(-2);
+  return picked.map(line => line.replace(/^[A-Z]+\s*\|\s*/, '')).join(' ').slice(0, 300);
 }
 
 /** `adb devices` lines: `<serial>\t<state>`. */

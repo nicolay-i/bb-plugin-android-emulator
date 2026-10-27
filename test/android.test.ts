@@ -72,5 +72,7 @@ test('sdkRoot prefers ANDROID_HOME, then ANDROID_SDK_ROOT, then the platform def
 test('startFailure prefers ERROR/FATAL lines, else the last lines', () => {
   assert.equal(startFailure('INFO    | boot\nERROR   | x86_64 emulation currently requires hardware acceleration!\nFATAL   | KVM is not usable\n'),
     'x86_64 emulation currently requires hardware acceleration! KVM is not usable');
-  assert.equal(startFailure('INFO    | boot\nfirst\nsecond\nthird\nWARNING | late\n'), 'second third');
+  assert.equal(startFailure('INFO    | boot\nfirst\nsecond\nthird\nWARNING | late\n'), 'third late');
+  assert.equal(startFailure('INFO    | boot\nWARNING | last diagnostic\n'), 'boot last diagnostic');
+  assert.equal(startFailure(''), '');
 });

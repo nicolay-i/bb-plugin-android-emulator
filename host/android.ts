@@ -87,7 +87,7 @@ export async function adbPath(): Promise<string> {
 
 export async function startAdbServer(): Promise<void> {
   const result = await run(await adbPath(), ['start-server'], 20000);
-  if (result.code !== 0) throw new AndroidError('adbFailed');
+  if (result.code !== 0) throw new AndroidError(`adbFailed: ${(result.stderr || result.stdout).trim().slice(0, 300)}`);
 }
 
 async function avdOf(adb: string, serial: string): Promise<string | null> {

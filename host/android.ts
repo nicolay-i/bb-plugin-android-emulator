@@ -85,9 +85,14 @@ export async function adbPath(): Promise<string> {
   return adb;
 }
 
-export async function startAdbServer(): Promise<void> {
-  const result = await run(await adbPath(), ['start-server'], 20000);
-  if (result.code !== 0) throw new AndroidError(`adbFailed: ${(result.stderr || result.stdout).trim().slice(0, 300)}`);
+// Two `adb start-server` on a cold server race for port 5037 and one fails, so parallel requests share one start.
+let adbStarting: Promise<void> | null = null;
+export function startAdbServer(): Promise<void> {
+  adbStarting ??= (async () => {
+    const result = await run(await adbPath(), ['start-server'], 20000);
+    if (result.code !== 0) throw new AndroidError(`adbFailed: ${(result.stderr || result.stdout).trim().slice(0, 300)}`);
+  })().finally(() => { adbStarting = null; });
+  return adbStarting;
 }
 
 async function avdOf(adb: string, serial: string): Promise<string | null> {

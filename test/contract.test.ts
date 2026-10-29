@@ -20,4 +20,5 @@ test('hostError takes the first key and its detail', () => {
     { key: 'startFailed', detail: 'x86 emulation unavailable' });
   assert.deepEqual(hostError('noSdk'), { key: 'noSdk' });
   assert.deepEqual(hostError('boom'), { key: 'commandFailed' });
+  assert.deepEqual(hostError('hostOffline: llm'), { key: 'hostOffline', detail: 'llm' });
 });

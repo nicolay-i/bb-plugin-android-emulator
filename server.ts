@@ -16,7 +16,18 @@ export default async function plugin(bb: BbPluginApi) {
     },
     port: { type: 'number', label: 'Viewer port on the Android host', default: 6090 },
   });
-  const host = bb.hosts.experimental_client({ contract: hostContract });
+  const client = bb.hosts.experimental_client({ contract: hostContract });
+  // A disconnected host fails every call; name it so the panel and CLI say which host is down.
+  const host = {
+    call: (async (method, input, options) => {
+      try { return await client.call(method, input, options); }
+      catch (error) {
+        const item = (await hosts()).find(entry => entry.id === options.hostId);
+        if (item && !item.online) throw new Error(`hostOffline: ${item.name}`);
+        throw error;
+      }
+    }) as typeof client.call,
+  };
   const config = async () => {
     const values = await settings.get();
     return { ...values, transport: TRANSPORTS[values.transport as TransportLabel] ?? 'bb' };

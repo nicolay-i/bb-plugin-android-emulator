@@ -37,10 +37,13 @@ function Emulator() {
   const failures = useRef(0);
   const canvas = useRef<HTMLCanvasElement>(null);
   const socket = useRef<WebSocket | null>(null);
-  const report = useCallback((error: unknown) => {
+  const describe = useCallback((error: unknown) => {
     const { key, detail } = hostError(String((error as Error)?.message ?? ''));
-    setStatus(detail ? `${t(key)} ${detail}` : t(key));
+    return detail ? `${t(key)} ${detail}` : t(key);
   }, [t]);
+  const report = useCallback((error: unknown) => setStatus(describe(error)), [describe]);
+  // Why the host state cannot load (e.g. the host is offline); cleared by the next successful refresh.
+  const [hostIssue, setHostIssue] = useState('');
 
   // Settings and host list.
   useEffect(() => {
@@ -70,13 +73,16 @@ function Emulator() {
     });
   }, [rpc, hostId]);
 
+  const poll = useCallback(() => refresh().then(() => setHostIssue(''), error => setHostIssue(describe(error))), [refresh, describe]);
+
   useEffect(() => {
     if (!hostId) return;
     setState(null);
-    refresh().catch(report);
-    const timer = setInterval(() => { if (!document.hidden) refresh().catch(report); }, 5000);
+    setHostIssue('');
+    void poll();
+    const timer = setInterval(() => { if (!document.hidden) void poll(); }, 5000);
     return () => clearInterval(timer);
-  }, [hostId, refresh, report]);
+  }, [hostId, poll]);
 
   useEffect(() => setSeen(false), [hostId, serial]);
   useEffect(() => setLaunching(null), [hostId]);
@@ -180,7 +186,7 @@ function Emulator() {
     setPopover(null);
     try { await work(); if (done) setStatus(t(done)); }
     catch (error) { report(error); }
-    finally { setBusy(false); await refresh().catch(report); }
+    finally { setBusy(false); await poll(); }
   }
 
   const startAvd = (name: string) => {
@@ -296,7 +302,7 @@ function Emulator() {
         )}
         {popover === 'more' && (
           <div className="bbae-popover bbae-menu">
-            <button onClick={() => { setPopover(null); refresh().catch(report); }}>{t('refresh')}</button>
+            <button onClick={() => { setPopover(null); void poll(); }}>{t('refresh')}</button>
             <button disabled={!ready} onClick={() => { setPopover(null); failures.current = 0; setTick(value => value + 1); }}>{t('reconnect')}</button>
             <button disabled={!ready} onClick={() => setPopover('clipboard')}>{t('clipboard')}</button>
             <button disabled={!serial?.startsWith('emulator-') || busy} onClick={() => setPopover('stop')}>{t('stop')}</button>
@@ -329,7 +335,7 @@ function Emulator() {
         {!ready && <Empty busy={booting}>
           {!hostId ? <><h1>{t('chooseHost')}</h1><p>{t('chooseHostBody')}</p>
             <button className="bbae-primary" onClick={() => toggle('host')}>{t('chooseHost')}</button></>
-          : !state ? <p>{t('connecting')}</p>
+          : !state ? <p>{hostIssue || t('connecting')}</p>
           : failed.length > 0 ? <Checks state={state} t={t} />
           : booting ? <><h1>{t('starting')}</h1><p>{t('emptyBody')}</p></>
           : <><h1>{t('emptyTitle')}</h1>
@@ -337,7 +343,7 @@ function Emulator() {
         </Empty>}
         {ready && !seen && <Empty>{link !== 'lost' && <p>{t('connecting')}</p>}</Empty>}
       </main>
-      {status && <p className="bbae-status" role="status" aria-live="polite">{status}</p>}
+      {(state && hostIssue || status) && <p className="bbae-status" role="status" aria-live="polite">{state && hostIssue || status}</p>}
       {ready && (
         <nav className="bbae-nav" aria-label={t('nav')}>
           <div>

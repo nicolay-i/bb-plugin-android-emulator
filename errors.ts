@@ -1,6 +1,6 @@
 // No imports: the panel bundle uses this, and it cannot load the server SDK that contract.ts needs.
 const ERROR_KEYS = ['noSdk', 'noAdb', 'adbFailed', 'listFailed', 'unavailable', 'alreadyRunning', 'startFailed', 'unknownAvd',
-  'notEmulator', 'portBusy', 'chooseAddress'];
+  'notEmulator', 'portBusy', 'chooseAddress', 'hostOffline'];
 
 /** Host errors carry an i18n key, optionally followed by `: detail`; anything else is a generic failure. */
 export function hostError(message: string): { key: string; detail?: string } {

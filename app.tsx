@@ -84,7 +84,8 @@ function Emulator() {
   // Video and control socket for the selected device.
   useEffect(() => {
     const target = canvas.current;
-    if (!hostId || !serial || !target) { setLink('idle'); return; }
+    // No running device: the empty screen explains it, so drop stale link errors.
+    if (!hostId || !serial || !target) { setLink('idle'); setStatus(''); return; }
     if (typeof VideoDecoder === 'undefined') { setStatus(t('noWebCodecs')); return; }
     let live = true, retry: ReturnType<typeof setTimeout> | undefined;
     const player = new VideoPlayer(target, () => { if (live) socket.current?.close(); }, () => { if (live) { failures.current = 0; setLink('live'); setSeen(true); setStatus(''); } });
@@ -331,7 +332,7 @@ function Emulator() {
           : !state ? <p>{t('connecting')}</p>
           : failed.length > 0 ? <Checks state={state} t={t} />
           : booting ? <><h1>{t('starting')}</h1><p>{t('emptyBody')}</p></>
-          : <><h1>{t('emptyTitle')}</h1><p>{t('emptyBody')}</p>
+          : <><h1>{t('emptyTitle')}</h1>
             {idleAvds.length ? <div className="bbae-choices">{launchItems}</div> : <p>{t('noAvds')}</p>}</>}
         </Empty>}
         {ready && !seen && <Empty>{link !== 'lost' && <p>{t('connecting')}</p>}</Empty>}

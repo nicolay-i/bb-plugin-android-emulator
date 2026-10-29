@@ -44,6 +44,9 @@ export const styles = `
 .bbae-empty h1{font-size:18px;font-weight:600;margin:0}
 .bbae-empty p{margin:0;color:var(--muted-foreground);line-height:1.5}
 .bbae-empty-icon{width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--background);border:1px solid var(--line);color:var(--muted-foreground)}
+.bbae-spinner{width:24px;height:24px;border:3px solid var(--line);border-top-color:var(--primary);border-radius:50%;animation:bbae-spin .8s linear infinite}
+@keyframes bbae-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.bbae-spinner{animation-duration:2.4s}}
 .bbae-checks{text-align:left;width:100%}
 .bbae-checks ul{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
 .bbae-checks li{display:flex;gap:10px;align-items:flex-start}

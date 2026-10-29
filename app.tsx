@@ -29,6 +29,8 @@ function Emulator() {
   const [status, setStatus] = useState('');
   const [popover, setPopover] = useState<Popover>(null);
   const [busy, setBusy] = useState(false);
+  // The AVD the user just launched, until adb lists it; adb then reports it `offline` while it boots.
+  const [launching, setLaunching] = useState<string | null>(null);
   const [deviceClipboard, setDeviceClipboard] = useState('');
   const [avd, setAvd] = useState('');
   const [text, setText] = useState('');
@@ -61,6 +63,7 @@ function Emulator() {
     if (!hostId) return;
     const next = await rpc.call('state', { hostId });
     setState(next);
+    setLaunching(current => (current && next.devices.some(device => device.avd === current) ? null : current));
     setAvd(current => (next.avds.includes(current) ? current : next.avds[0] ?? ''));
     setSerial(current => {
       const ready = next.devices.filter(device => device.state === 'device').map(device => device.serial);
@@ -78,6 +81,7 @@ function Emulator() {
   }, [hostId, refresh, report]);
 
   useEffect(() => setSeen(false), [hostId, serial]);
+  useEffect(() => setLaunching(null), [hostId]);
 
   // Video and control socket for the selected device.
   useEffect(() => {
@@ -180,7 +184,12 @@ function Emulator() {
     finally { setBusy(false); await refresh().catch(report); }
   }
 
-  const startAvd = (name: string) => action(() => rpc.call('start', { hostId: hostId!, avd: name }), 'starting');
+  const startAvd = (name: string) => {
+    setLaunching(name);
+    // An emulator that dies before adb lists it would leave the spinner forever.
+    setTimeout(() => setLaunching(current => (current === name ? null : current)), 120_000);
+    return action(() => rpc.call('start', { hostId: hostId!, avd: name }).catch(error => { setLaunching(null); throw error; }), 'starting');
+  };
   const stopDevice = () => {
     setPopover(null);
     if (serial) void action(() => rpc.call('stop', { hostId: hostId!, serial }), 'stopped');
@@ -212,6 +221,7 @@ function Emulator() {
   const failed = state?.checks.filter(check => !check.ok) ?? [];
   const toggle = (name: Exclude<Popover, null>) => setPopover(current => (current === name ? null : name));
   const ready = Boolean(serial);
+  const booting = Boolean(launching) || Boolean(state?.devices.some(device => device.serial.startsWith('emulator-') && device.state !== 'device'));
 
   return (
     <div className="bbae" onPointerDown={event => { if (!(event.target as Element).closest('.bbae-header')) setPopover(null); }}>
@@ -308,11 +318,12 @@ function Emulator() {
       <main className="bbae-stage">
         <canvas ref={canvas} tabIndex={0} hidden={!ready || !seen} aria-label={t('screen')} className="bbae-screen"
           onPointerDown={touch(0)} onPointerMove={touch(2)} onPointerUp={touch(1)} onPointerCancel={touch(1)} />
-        {!ready && <Empty>
+        {!ready && <Empty busy={booting}>
           {!hostId ? <><h1>{t('chooseHost')}</h1><p>{t('chooseHostBody')}</p>
             <button className="bbae-primary" onClick={() => toggle('host')}>{t('chooseHost')}</button></>
           : !state ? <p>{t('connecting')}</p>
           : failed.length > 0 ? <Checks state={state} t={t} />
+          : booting ? <><h1>{t('starting')}</h1><p>{t('emptyBody')}</p></>
           : <><h1>{t('emptyTitle')}</h1><p>{t('emptyBody')}</p>
             <button className="bbae-primary" disabled={busy || !state.avds.length} onClick={() => void startAvd(state.avds[0])}>
               {state.avds.length ? t('launchNamed', { name: state.avds[0] }) : t('noAvds')}</button>
@@ -342,8 +353,8 @@ function IconButton(props: { icon: string; label: string; onClick: () => void; e
   );
 }
 
-function Empty({ children }: { children: ReactNode }) {
-  return <section className="bbae-empty"><div className="bbae-empty-icon"><Icon name="Smartphone" aria-hidden /></div>{children}</section>;
+function Empty({ children, busy = false }: { children: ReactNode; busy?: boolean }) {
+  return <section className="bbae-empty" aria-busy={busy}><div className="bbae-empty-icon">{busy ? <span className="bbae-spinner" /> : <Icon name="Smartphone" aria-hidden />}</div>{children}</section>;
 }
 
 /** Environment readiness: the plugin checks the Android setup but never installs or changes it. */

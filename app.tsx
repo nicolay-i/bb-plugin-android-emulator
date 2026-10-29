@@ -186,7 +186,7 @@ function Emulator() {
     setLaunching(name);
     // An emulator that dies before adb lists it would leave the spinner forever.
     setTimeout(() => setLaunching(current => (current === name ? null : current)), 120_000);
-    return action(() => rpc.call('start', { hostId: hostId!, avd: name }).catch(error => { setLaunching(null); throw error; }), 'starting');
+    return action(() => rpc.call('start', { hostId: hostId!, avd: name }).catch(error => { setLaunching(null); throw error; }));
   };
   const stopDevice = () => {
     setPopover(null);

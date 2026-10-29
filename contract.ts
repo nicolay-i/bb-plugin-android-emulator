@@ -25,9 +25,9 @@ export type HostState = z.infer<typeof hostState>;
  * The LAN/VPN address the viewer listens on: the one configured address (comma-separated list, one per host)
  * that belongs to this host, or the host's only address when none of the configured ones does.
  */
-export function viewerAddress(addresses: HostState['addresses'], configured: string): string {
+export function viewerAddress(addresses: HostState['addresses'], configured: readonly string[]): string {
   const candidates = addresses.map(item => item.address);
-  const listed = configured.split(/[\s,]+/).filter(address => candidates.includes(address));
+  const listed = configured.filter(address => candidates.includes(address));
   if (listed.length === 1) return listed[0];
   if (listed.length === 0 && candidates.length === 1) return candidates[0];
   throw new Error(`chooseAddress: ${candidates.join(', ')}`);
@@ -53,6 +53,7 @@ export const hostContract = defineRpcContract({
 });
 
 const hostId = z.string().min(1).max(100);
+const networkAddresses = z.array(z.ipv4()).max(64);
 export const rpcContract = defineRpcContract({
   config: { input: z.null(), output: z.object({ language: z.string(), transport, hostId: hostId.nullable() }).strict() },
   hosts: { input: z.null(), output: z.array(z.object({ id: hostId, name: z.string(), online: z.boolean() }).strict()) },
@@ -63,6 +64,9 @@ export const rpcContract = defineRpcContract({
   /** Returns the WebSocket URL the browser connects to directly. */
   open: { input: z.object({ hostId, serial, origin }).strict(), output: z.object({ url: z.string() }).strict() },
   close: { input: z.object({ hostId }).strict(), output: z.null() },
+  /** LAN / VPN addresses, one per Android host; each host listens on the one it owns. */
+  addresses: { input: z.null(), output: networkAddresses },
+  setAddresses: { input: z.object({ addresses: networkAddresses }).strict(), output: z.null() },
 });
 
 /** Viewer → host WebSocket messages. Coordinates are in video pixels. */

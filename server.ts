@@ -5,6 +5,7 @@ import { languageOptions } from './i18n.js';
 const TRANSPORTS = { 'BB network (bb connect)': 'bb', 'LAN / VPN': 'network' } as const;
 type TransportLabel = keyof typeof TRANSPORTS;
 const HOST_KEY = 'hostId';
+const ADDRESSES_KEY = 'networkAddresses';
 
 export default async function plugin(bb: BbPluginApi) {
   const settings = bb.settings.define({
@@ -13,10 +14,6 @@ export default async function plugin(bb: BbPluginApi) {
       type: 'select', label: 'Connection', options: Object.keys(TRANSPORTS), default: 'BB network (bb connect)',
       description: 'BB network streams through bb connect and needs bb opened at getbb.app. LAN / VPN connects the browser straight to the Android host.',
     },
-    networkAddress: {
-      type: 'string', label: 'LAN / VPN addresses of Android hosts', default: '',
-      description: 'IPv4 addresses the viewer listens on, comma-separated, one per Android host; each host uses the one it owns. A host with exactly one LAN or VPN address needs none.',
-    },
     port: { type: 'number', label: 'Viewer port on the Android host', default: 6090 },
   });
   const host = bb.hosts.experimental_client({ contract: hostContract });
@@ -24,6 +21,8 @@ export default async function plugin(bb: BbPluginApi) {
     const values = await settings.get();
     return { ...values, transport: TRANSPORTS[values.transport as TransportLabel] ?? 'bb' };
   };
+
+  const addresses = async () => (await bb.storage.kv.get<string[]>(ADDRESSES_KEY)) ?? [];
 
   async function hosts() {
     const list = await bb.sdk.hosts.list();
@@ -50,12 +49,14 @@ export default async function plugin(bb: BbPluginApi) {
     start: ({ hostId, avd }) => host.call('start', { avd }, { hostId }),
     stop: ({ hostId, serial }) => host.call('stop', { serial }, { hostId }),
     open: async ({ hostId, serial, origin }) => {
-      const { transport, networkAddress: configured, port } = await config();
+      const { transport, port } = await config();
       const state = await host.call('state', null, { hostId });
-      const address = transport === 'network' ? viewerAddress(state.addresses, configured) : 'loopback';
+      const address = transport === 'network' ? viewerAddress(state.addresses, await addresses()) : 'loopback';
       const opened = await host.call('open', { serial, listen: { bind: address, port, origin } }, { hostId });
       return { url: await viewerUrl(hostId, opened.port, opened.token, transport, address) };
     },
+    addresses,
+    setAddresses: async ({ addresses: next }) => { await bb.storage.kv.set(ADDRESSES_KEY, [...new Set(next)]); return null; },
     close: async ({ hostId }) => {
       await host.call('close', null, { hostId });
       bb.hosts.declareSharedPorts(hostId, []);

@@ -66,4 +66,14 @@ export const styles = `
 .bbae-nav>div{display:flex;gap:4px;padding:4px;background:var(--background);border:1px solid var(--line);border-radius:12px}
 .bbae-nav .bbae-icon{width:72px;color:var(--foreground)}
 .bbae-nav svg{width:16px;height:16px}
+.bbae-settings{height:auto;background:transparent;gap:10px;align-items:flex-start}
+.bbae-settings>button{border:1px solid var(--line)}
+.bbae-addresses{list-style:none;margin:0;padding:6px 12px;display:flex;flex-direction:column;width:100%;border:1px solid var(--line);border-radius:10px;background:var(--muted)}
+.bbae-addresses li{padding:4px 0}
+.bbae-addresses li+li{border-top:1px solid var(--line)}
+.bbae-addresses li,.bbae-addresses form{display:flex;flex-direction:row;align-items:center;gap:6px;width:100%}
+.bbae-addresses code{flex:1;font-size:13px}
+.bbae-addresses input{flex:1;min-width:0;min-height:36px;padding:0 10px;font:inherit;font-family:var(--font-mono,monospace);color:inherit;background:var(--background);border:1px solid var(--line);border-radius:8px}
+.bbae-addresses input:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.bbae-error{margin:0;font-size:13px;color:#cf222e}
 `;

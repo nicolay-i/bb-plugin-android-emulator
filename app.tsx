@@ -382,6 +382,56 @@ function Checks({ state, t }: { state: HostState; t: (key: string, values?: Reco
 }
 
 /** BB has no built-in camera or Android back glyph; both follow the host icon size and colour. */
+const IPV4 = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+
+/** Settings: the LAN / VPN address list, one row per Android host. Rows read as text until edited. */
+function Addresses() {
+  const rpc = useRpc<typeof rpcContract>();
+  const [list, setList] = useState<string[] | null>(null);
+  // Row being edited; `list.length` is a new row.
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => { rpc.call('addresses', null).then(setList, cause => setError(String(cause?.message ?? cause))); }, [rpc]);
+
+  async function save(next: string[]) {
+    try { await rpc.call('setAddresses', { addresses: next }); setList(next); setEditing(null); setError(''); }
+    catch (cause) { setError(String((cause as Error)?.message ?? cause)); }
+  }
+  function edit(index: number) { setEditing(index); setDraft(list?.[index] ?? ''); setError(''); }
+  function commit(event: FormEvent) {
+    event.preventDefault();
+    const value = draft.trim();
+    if (!IPV4.test(value)) { setError('Enter an IPv4 address, for example 100.64.0.1.'); return; }
+    if (list!.some((address, index) => address === value && index !== editing)) { setError(`${value} is already in the list.`); return; }
+    const next = [...list!];
+    next[editing!] = value;
+    void save(next);
+  }
+
+  if (!list) return <div className="bbae bbae-settings">{error && <p className="bbae-error" role="alert">{error}</p>}</div>;
+  const rows = editing === list.length ? [...list, ''] : list;
+  return (
+    <div className="bbae bbae-settings">
+      <p className="bbae-hint">The browser connects straight to the Android host when Connection is LAN / VPN. Add an address for every host that has several; each host uses the one it owns.</p>
+      {rows.length > 0 && <ul className="bbae-addresses">
+        {rows.map((address, index) => index === editing
+          ? <li key={index}><form onSubmit={commit} onKeyDown={event => { if (event.key === 'Escape') setEditing(null); }}>
+              <input autoFocus value={draft} onChange={event => setDraft(event.target.value)} placeholder="100.64.0.1" aria-label="IPv4 address" />
+              <button type="submit" className="bbae-primary">Save</button>
+              <button type="button" onClick={() => setEditing(null)}>Cancel</button>
+            </form></li>
+          : <li key={index}><code>{address}</code>
+              <button type="button" disabled={editing !== null} onClick={() => edit(index)}>Edit</button>
+              <button type="button" disabled={editing !== null} onClick={() => void save(list.filter((_, at) => at !== index))}>Delete</button>
+            </li>)}
+      </ul>}
+      {error && <p className="bbae-error" role="alert">{error}</p>}
+      {editing === null && <button type="button" onClick={() => edit(list.length)}>+ Add address</button>}
+    </div>
+  );
+}
+
 const glyph = (path: string) => ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d={path} />
@@ -392,5 +442,6 @@ export default definePluginApp(app => {
   app.experimental_icons.register({ name: 'android-emulator/camera', component: glyph('M4 8h3l2-3h6l2 3h3v11H4z M12 10.5a3 3 0 1 0 0 6 3 3 0 1 0 0-6z') });
   app.experimental_icons.register({ name: 'android-emulator/back', component: glyph('M17 5v14L6 12z') });
   app.slots.threadPanelAction({ id: 'emulator', title: 'Android Emulator', icon: 'Smartphone', layout: 'flush', component: Emulator });
+  app.slots.settingsSection({ id: 'addresses', title: 'LAN / VPN addresses', component: () => <><style>{styles}</style><Addresses /></> });
   app.slots.navPanel({ id: 'android', title: 'Android Emulator', icon: 'Smartphone', path: 'android', component: Emulator });
 });

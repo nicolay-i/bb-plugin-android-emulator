@@ -218,7 +218,7 @@ function Emulator() {
   const device = state?.devices.find(item => item.serial === serial);
   const failed = state?.checks.filter(check => !check.ok) ?? [];
   // AVDs that are not running yet; starting a running one fails with alreadyRunning.
-  const idleAvds = state?.avds.filter(name => !state.devices.some(item => item.avd === name)) ?? [];
+  const idleAvds = state?.avds.filter(name => name !== launching && !state.devices.some(item => item.avd === name)) ?? [];
   const launchItems = idleAvds.map(name => (
     <button key={name} disabled={busy} onClick={() => void startAvd(name)}>{t('launchNamed', { name })}</button>
   ));

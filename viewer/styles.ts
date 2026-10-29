@@ -34,6 +34,9 @@ export const styles = `
 .bbae-hint{margin:0;font-size:12px;color:var(--muted-foreground)}
 .bbae .bbae-primary{background:var(--primary);color:var(--primary-foreground);padding:0 14px;font-weight:500;flex:none}
 .bbae .bbae-primary:hover:not(:disabled){background:color-mix(in srgb,var(--primary) 85%,var(--foreground))}
+.bbae-confirm{margin:0;line-height:1.5}
+.bbae .bbae-danger{background:#cf222e;color:#fff}
+.bbae .bbae-danger:hover:not(:disabled){background:#a40e26}
 .bbae-link{color:var(--primary);font-size:13px;min-height:24px!important}
 .bbae-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--muted);overflow:hidden}
 .bbae-screen{max-width:100%;max-height:100%;border:5px solid #1f2023;border-radius:24px;background:#000;box-shadow:0 12px 32px #14141e2e;touch-action:none;cursor:default}

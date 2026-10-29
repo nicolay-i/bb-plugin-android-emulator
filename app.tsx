@@ -10,7 +10,7 @@ import { styles } from './viewer/styles';
 type Rpc = ReturnType<typeof useRpc<typeof rpcContract>>;
 type Host = { id: string; name: string; online: boolean };
 type Link = 'idle' | 'connecting' | 'live' | 'lost';
-type Popover = 'host' | 'device' | 'input' | 'more' | 'clipboard' | null;
+type Popover = 'host' | 'device' | 'input' | 'more' | 'clipboard' | 'stop' | null;
 
 const RECONNECT_MS = [1000, 2000, 5000, 10000];
 
@@ -182,8 +182,8 @@ function Emulator() {
 
   const startAvd = (name: string) => action(() => rpc.call('start', { hostId: hostId!, avd: name }), 'starting');
   const stopDevice = () => {
-    if (!serial || !window.confirm(t('stopConfirm', { name: serial }))) return;
-    void action(() => rpc.call('stop', { hostId: hostId!, serial }), 'stopped');
+    setPopover(null);
+    if (serial) void action(() => rpc.call('stop', { hostId: hostId!, serial }), 'stopped');
   };
 
   function submitText(event: FormEvent) {
@@ -234,7 +234,7 @@ function Emulator() {
           <IconButton icon="RotateCcw" label={t('rotate')} onClick={() => send({ t: 'rotate' })} />
           <IconButton icon="Keyboard" label={t('input')} expanded={popover === 'input'} onClick={() => toggle('input')} />
         </>}
-        {hostId && <IconButton icon="MoreHorizontal" label={t('more')} expanded={popover === 'more' || popover === 'clipboard'} onClick={() => toggle('more')} />}
+        {hostId && <IconButton icon="MoreHorizontal" label={t('more')} expanded={popover === 'more' || popover === 'clipboard' || popover === 'stop'} onClick={() => toggle('more')} />}
 
         {popover === 'host' && (
           <section className="bbae-popover bbae-menu bbae-left" aria-label={t('chooseHost')}>
@@ -281,8 +281,17 @@ function Emulator() {
             <button onClick={() => { setPopover(null); refresh().catch(report); }}>{t('refresh')}</button>
             <button disabled={!ready} onClick={() => { setPopover(null); failures.current = 0; setTick(value => value + 1); }}>{t('reconnect')}</button>
             <button disabled={!ready} onClick={() => setPopover('clipboard')}>{t('clipboard')}</button>
-            <button disabled={!serial?.startsWith('emulator-') || busy} onClick={stopDevice}>{t('stop')}</button>
+            <button disabled={!serial?.startsWith('emulator-') || busy} onClick={() => setPopover('stop')}>{t('stop')}</button>
           </div>
+        )}
+        {popover === 'stop' && (
+          <section className="bbae-popover" role="alertdialog" aria-label={t('stop')} aria-describedby="bbae-stop-text">
+            <p id="bbae-stop-text" className="bbae-confirm">{t('stopConfirm', { name: device?.avd ?? serial ?? '' })}</p>
+            <div className="bbae-row"><span className="bbae-spacer" />
+              <button autoFocus onClick={() => setPopover(null)}>{t('cancel')}</button>
+              <button className="bbae-primary bbae-danger" disabled={busy} onClick={stopDevice}>{t('stop')}</button>
+            </div>
+          </section>
         )}
         {popover === 'clipboard' && (
           <section className="bbae-popover" aria-label={t('clipboard')}>

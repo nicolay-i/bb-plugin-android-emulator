@@ -10,7 +10,7 @@ import { styles } from './viewer/styles';
 type Rpc = ReturnType<typeof useRpc<typeof rpcContract>>;
 type Host = { id: string; name: string; online: boolean };
 type Link = 'idle' | 'connecting' | 'live' | 'lost';
-type Popover = 'host' | 'device' | 'input' | 'more' | 'clipboard' | 'stop' | null;
+type Popover = 'host' | 'device' | 'launch' | 'input' | 'more' | 'clipboard' | 'stop' | null;
 
 const RECONNECT_MS = [1000, 2000, 5000, 10000];
 
@@ -32,7 +32,6 @@ function Emulator() {
   // The AVD the user just launched, until adb lists it; adb then reports it `offline` while it boots.
   const [launching, setLaunching] = useState<string | null>(null);
   const [deviceClipboard, setDeviceClipboard] = useState('');
-  const [avd, setAvd] = useState('');
   const [text, setText] = useState('');
   const [tick, setTick] = useState(0);
   const failures = useRef(0);
@@ -64,7 +63,6 @@ function Emulator() {
     const next = await rpc.call('state', { hostId });
     setState(next);
     setLaunching(current => (current && next.devices.some(device => device.avd === current) ? null : current));
-    setAvd(current => (next.avds.includes(current) ? current : next.avds[0] ?? ''));
     setSerial(current => {
       const ready = next.devices.filter(device => device.state === 'device').map(device => device.serial);
       if (current && ready.includes(current)) return current;
@@ -219,6 +217,11 @@ function Emulator() {
   const host = hosts.find(item => item.id === hostId);
   const device = state?.devices.find(item => item.serial === serial);
   const failed = state?.checks.filter(check => !check.ok) ?? [];
+  // AVDs that are not running yet; starting a running one fails with alreadyRunning.
+  const idleAvds = state?.avds.filter(name => !state.devices.some(item => item.avd === name)) ?? [];
+  const launchItems = idleAvds.map(name => (
+    <button key={name} disabled={busy} onClick={() => void startAvd(name)}>{t('launchNamed', { name })}</button>
+  ));
   const toggle = (name: Exclude<Popover, null>) => setPopover(current => (current === name ? null : name));
   const ready = Boolean(serial);
   const booting = Boolean(launching) || Boolean(state?.devices.some(device => device.serial.startsWith('emulator-') && device.state !== 'device'));
@@ -232,7 +235,7 @@ function Emulator() {
           <span className="bbae-name">{host?.name ?? t('chooseHost')}</span>
         </button>
         {hostId && (
-          <button className="bbae-chip" aria-expanded={popover === 'device'} onClick={() => toggle('device')} aria-label={device ? t('deviceNamed', { name: device.avd ?? device.serial }) : t('chooseDevice')}>
+          <button className="bbae-chip" aria-expanded={popover === 'device' || popover === 'launch'} onClick={() => setPopover(current => (current === 'device' || current === 'launch' ? null : 'device'))} aria-label={device ? t('deviceNamed', { name: device.avd ?? device.serial }) : t('chooseDevice')}>
             <span className={`bbae-dot ${link === 'live' ? 'online' : ''}`} />
             <span className="bbae-name">{device ? device.avd ?? device.serial : t('none')}</span>
             <Icon name="ChevronDown" aria-hidden />
@@ -255,21 +258,25 @@ function Emulator() {
             ))}
           </section>
         )}
-        {popover === 'device' && state && (
-          <section className="bbae-popover bbae-left" aria-label={t('chooseDevice')}>
-            <label className="bbae-label" htmlFor="bbae-devices">{t('running')}</label>
-            <select id="bbae-devices" value={serial ?? ''} onChange={event => { setSerial(event.target.value || null); setPopover(null); }}>
-              {state.devices.length === 0 && <option value="">{t('noRunning')}</option>}
-              {state.devices.map(item => <option key={item.serial} value={item.serial} disabled={item.state !== 'device'}>{`${item.avd ?? item.serial} · ${item.serial}${item.state === 'device' ? '' : ' · ' + item.state}`}</option>)}
-            </select>
-            <label className="bbae-label" htmlFor="bbae-avds">{t('launch')}</label>
-            <div className="bbae-row">
-              <select id="bbae-avds" value={avd} onChange={event => setAvd(event.target.value)}>
-                {state.avds.length === 0 && <option value="">{t('noAvds')}</option>}
-                {state.avds.map(name => <option key={name}>{name}</option>)}
-              </select>
-              <button className="bbae-primary" disabled={busy || !avd} onClick={() => void startAvd(avd)}>{t('start')}</button>
-            </div>
+        {(popover === 'device' || popover === 'launch') && state && (
+          <section className="bbae-popover bbae-menu bbae-left" aria-label={t('chooseDevice')}>
+            {state.devices.length === 0 ? launchItems : <>
+              <p className="bbae-label bbae-menu-title">{t('running')}</p>
+              {state.devices.map(item => (
+                <button key={item.serial} disabled={item.state !== 'device'} aria-current={item.serial === serial}
+                  onClick={() => { setSerial(item.serial); setPopover(null); }}>
+                  <span className={`bbae-dot ${item.state === 'device' ? 'online' : ''}`} />{item.avd ?? item.serial}
+                  <span className="bbae-hint">{item.state === 'device' ? item.serial : item.state}</span>
+                </button>
+              ))}
+              {idleAvds.length > 0 && <div className="bbae-submenu" onMouseEnter={() => setPopover('launch')} onMouseLeave={() => setPopover('device')}>
+                <button aria-expanded={popover === 'launch'} onClick={() => toggle('launch')}>
+                  {t('launch')}<span className="bbae-spacer" /><Icon name="ChevronRight" aria-hidden />
+                </button>
+                {popover === 'launch' && <div className="bbae-popover bbae-menu">{launchItems}</div>}
+              </div>}
+            </>}
+            {state.avds.length === 0 && <p className="bbae-hint bbae-menu-title">{t('noAvds')}</p>}
           </section>
         )}
         {popover === 'input' && (
@@ -325,9 +332,7 @@ function Emulator() {
           : failed.length > 0 ? <Checks state={state} t={t} />
           : booting ? <><h1>{t('starting')}</h1><p>{t('emptyBody')}</p></>
           : <><h1>{t('emptyTitle')}</h1><p>{t('emptyBody')}</p>
-            <button className="bbae-primary" disabled={busy || !state.avds.length} onClick={() => void startAvd(state.avds[0])}>
-              {state.avds.length ? t('launchNamed', { name: state.avds[0] }) : t('noAvds')}</button>
-            {state.avds.length > 1 && <button className="bbae-link" onClick={() => toggle('device')}>{t('other')}</button>}</>}
+            {idleAvds.length ? <div className="bbae-choices">{launchItems}</div> : <p>{t('noAvds')}</p>}</>}
         </Empty>}
         {ready && !seen && <Empty>{link !== 'lost' && <p>{t('connecting')}</p>}</Empty>}
       </main>

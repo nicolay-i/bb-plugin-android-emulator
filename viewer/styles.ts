@@ -26,6 +26,13 @@ export const styles = `
 .bbae-menu{width:240px;padding:6px;gap:0}
 .bbae-menu button{justify-content:flex-start;width:100%}
 .bbae-menu button[aria-current=true]{font-weight:600}
+.bbae-menu .bbae-hint{margin-left:auto;padding-left:8px}
+.bbae-menu-title{margin:0;padding:6px 10px 4px}
+.bbae-submenu{position:relative}
+.bbae-submenu>.bbae-popover{top:-7px;left:100%;right:auto;margin-left:4px;transform-origin:top left;max-height:min(360px,70vh);overflow:auto}
+.bbae-choices{display:flex;flex-direction:column;gap:6px;width:min(320px,100%);max-height:40vh;overflow:auto}
+.bbae .bbae-choices button{justify-content:flex-start;border:1px solid var(--line);background:var(--background);padding:0 14px;min-height:40px}
+.bbae .bbae-choices button:hover:not(:disabled){background:var(--accent)}
 .bbae-label{font-size:12px;font-weight:600;color:var(--muted-foreground)}
 .bbae select{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--background)}
 .bbae textarea{width:100%;min-height:88px;max-height:240px;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--background);line-height:1.5}
